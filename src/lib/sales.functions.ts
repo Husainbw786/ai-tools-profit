@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 
 const SaleInput = z.object({
   productName: z.string().min(1).max(200),
@@ -83,7 +84,7 @@ export const updateSale = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     const p = data.patch;
-    const payload: Record<string, unknown> = {};
+    const payload: TablesUpdate<"sales"> = {};
     if (p.productName !== undefined) payload.product_name = p.productName;
     if (p.durationMonths !== undefined) payload.duration_months = p.durationMonths;
     if (p.buyerName !== undefined) payload.buyer_name = p.buyerName;
