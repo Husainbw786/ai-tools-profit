@@ -12,6 +12,8 @@ const SaleInput = z.object({
   sellPrice: z.number().min(0),
   warrantyStart: z.string(), // ISO
   notes: z.string().max(2000).optional().nullable(),
+  customerNumber: z.string().max(100).optional().nullable(),
+  dealerNumber: z.string().max(100).optional().nullable(),
 });
 
 export type SaleDTO = {
@@ -24,6 +26,8 @@ export type SaleDTO = {
   sellPrice: number;
   warrantyStart: string;
   notes: string | null;
+  customerNumber: string | null;
+  dealerNumber: string | null;
   createdAt: string;
 };
 
@@ -37,6 +41,8 @@ const toDTO = (row: any): SaleDTO => ({
   sellPrice: Number(row.sell_price),
   warrantyStart: row.warranty_start,
   notes: row.notes ?? null,
+  customerNumber: row.customer_number ?? null,
+  dealerNumber: row.dealer_number ?? null,
   createdAt: row.created_at,
 });
 
@@ -69,6 +75,8 @@ export const createSale = createServerFn({ method: "POST" })
         sell_price: data.sellPrice,
         warranty_start: data.warrantyStart,
         notes: data.notes ?? null,
+        customer_number: data.customerNumber ?? null,
+        dealer_number: data.dealerNumber ?? null,
       })
       .select("*")
       .single();
@@ -93,6 +101,8 @@ export const updateSale = createServerFn({ method: "POST" })
     if (p.sellPrice !== undefined) payload.sell_price = p.sellPrice;
     if (p.warrantyStart !== undefined) payload.warranty_start = p.warrantyStart;
     if (p.notes !== undefined) payload.notes = p.notes;
+    if (p.customerNumber !== undefined) payload.customer_number = p.customerNumber;
+    if (p.dealerNumber !== undefined) payload.dealer_number = p.dealerNumber;
     const { data: row, error } = await supabase
       .from("sales")
       .update(payload)
