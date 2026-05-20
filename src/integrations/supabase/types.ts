@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      sales: {
+        Row: {
+          buy_price: number
+          buyer_name: string
+          created_at: string
+          customer_name: string
+          duration_months: number
+          id: string
+          notes: string | null
+          product_name: string
+          sell_price: number
+          updated_at: string
+          user_id: string
+          warranty_start: string
+        }
+        Insert: {
+          buy_price?: number
+          buyer_name?: string
+          created_at?: string
+          customer_name?: string
+          duration_months: number
+          id?: string
+          notes?: string | null
+          product_name: string
+          sell_price?: number
+          updated_at?: string
+          user_id: string
+          warranty_start?: string
+        }
+        Update: {
+          buy_price?: number
+          buyer_name?: string
+          created_at?: string
+          customer_name?: string
+          duration_months?: number
+          id?: string
+          notes?: string | null
+          product_name?: string
+          sell_price?: number
+          updated_at?: string
+          user_id?: string
+          warranty_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
