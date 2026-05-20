@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { salesStore } from "@/lib/sales-store";
+import { useCreateSale, useDeleteSale, useUpdateSale } from "@/hooks/use-sales";
 import { formatMoney, type Sale } from "@/lib/sale-utils";
 import { toast } from "sonner";
 
@@ -39,6 +39,10 @@ const empty = {
 
 export function SaleDialog({ open, onOpenChange, sale }: Props) {
   const [form, setForm] = useState(empty);
+  const createMut = useCreateSale();
+  const updateMut = useUpdateSale();
+  const deleteMut = useDeleteSale();
+  const busy = createMut.isPending || updateMut.isPending || deleteMut.isPending;
 
   useEffect(() => {
     if (open) {
@@ -61,27 +65,35 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
 
   const profit = form.sellPrice - form.buyPrice;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.productName.trim()) {
       toast.error("Product name is required");
       return;
     }
-    if (sale) {
-      salesStore.update(sale.id, form);
-      toast.success("Sale updated");
-    } else {
-      salesStore.add(form);
-      toast.success("Sale added");
+    try {
+      if (sale) {
+        await updateMut.mutateAsync({ id: sale.id, patch: form });
+        toast.success("Sale updated");
+      } else {
+        await createMut.mutateAsync(form);
+        toast.success("Sale added");
+      }
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
     }
-    onOpenChange(false);
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!sale) return;
-    salesStore.remove(sale.id);
-    toast.success("Sale deleted");
-    onOpenChange(false);
+    try {
+      await deleteMut.mutateAsync(sale.id);
+      toast.success("Sale deleted");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    }
   };
 
   return (
