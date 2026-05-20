@@ -1,6 +1,10 @@
-import { Link, useLocation } from "@tanstack/react-router";
-import { LayoutDashboard, Package, Archive } from "lucide-react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { LayoutDashboard, Package, Archive, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -10,6 +14,26 @@ const nav = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
+  const { session, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !session) navigate({ to: "/login" });
+  }, [loading, session, navigate]);
+
+  if (loading || !session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/login" });
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground pb-20 md:pb-0">
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
@@ -17,6 +41,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Link to="/" className="text-base font-semibold tracking-tight">
             SubTracker
           </Link>
+          <div className="flex items-center gap-1">
           <nav className="hidden gap-1 md:flex">
             {nav.map((n) => {
               const active = pathname === n.to;
@@ -36,6 +61,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              title="Sign out"
+              className="text-muted-foreground"
+            >
+              <LogOut className="size-4" />
+            </Button>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
