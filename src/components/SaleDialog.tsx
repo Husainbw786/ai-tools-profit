@@ -223,11 +223,13 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
 
           <DialogFooter className="gap-2 sm:gap-2">
             {sale && (
-              <Button type="button" variant="destructive" onClick={remove}>
+              <Button type="button" variant="destructive" onClick={remove} disabled={busy}>
                 Delete
               </Button>
             )}
-            <Button type="submit">{sale ? "Save" : "Add sale"}</Button>
+            <Button type="submit" disabled={busy}>
+              {sale ? "Save" : "Add sale"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
