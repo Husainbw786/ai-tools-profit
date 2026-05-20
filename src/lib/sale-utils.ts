@@ -10,6 +10,8 @@ export type Sale = {
   sellPrice: number;
   warrantyStart: string; // ISO date
   notes?: string | null;
+  customerNumber?: string | null;
+  dealerNumber?: string | null;
   createdAt: string;
 };
 
