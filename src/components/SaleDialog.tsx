@@ -35,6 +35,8 @@ const empty = {
   sellPrice: 0,
   warrantyStart: new Date().toISOString(),
   notes: "",
+  customerNumber: "",
+  dealerNumber: "",
 };
 
 export function SaleDialog({ open, onOpenChange, sale }: Props) {
@@ -57,6 +59,8 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               sellPrice: sale.sellPrice,
               warrantyStart: sale.warrantyStart,
               notes: sale.notes ?? "",
+              customerNumber: sale.customerNumber ?? "",
+              dealerNumber: sale.dealerNumber ?? "",
             }
           : { ...empty, warrantyStart: new Date().toISOString() },
       );
@@ -121,10 +125,16 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                 id="dur"
                 type="number"
                 min={1}
-                value={form.durationMonths}
-                onChange={(e) =>
-                  setForm({ ...form, durationMonths: Number(e.target.value) || 1 })
-                }
+                value={form.durationMonths === 0 ? "" : form.durationMonths}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm({ ...form, durationMonths: v === "" ? 0 : Number(v) });
+                }}
+                onBlur={() => {
+                  if (!form.durationMonths || form.durationMonths < 1)
+                    setForm({ ...form, durationMonths: 1 });
+                }}
               />
             </div>
             <div className="space-y-1.5">
@@ -183,8 +193,12 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                 id="buy"
                 type="number"
                 min={0}
-                value={form.buyPrice}
-                onChange={(e) => setForm({ ...form, buyPrice: Number(e.target.value) || 0 })}
+                value={form.buyPrice === 0 ? "" : form.buyPrice}
+                placeholder="0"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) =>
+                  setForm({ ...form, buyPrice: e.target.value === "" ? 0 : Number(e.target.value) })
+                }
               />
             </div>
             <div className="space-y-1.5">
@@ -193,8 +207,33 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                 id="sell"
                 type="number"
                 min={0}
-                value={form.sellPrice}
-                onChange={(e) => setForm({ ...form, sellPrice: Number(e.target.value) || 0 })}
+                value={form.sellPrice === 0 ? "" : form.sellPrice}
+                placeholder="0"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) =>
+                  setForm({ ...form, sellPrice: e.target.value === "" ? 0 : Number(e.target.value) })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="dealerNum">Dealer number <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input
+                id="dealerNum"
+                placeholder="Buyer contact / ID"
+                value={form.dealerNumber}
+                onChange={(e) => setForm({ ...form, dealerNumber: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="custNum">Customer number <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input
+                id="custNum"
+                placeholder="Customer contact / ID"
+                value={form.customerNumber}
+                onChange={(e) => setForm({ ...form, customerNumber: e.target.value })}
               />
             </div>
           </div>
