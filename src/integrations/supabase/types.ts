@@ -20,6 +20,8 @@ export type Database = {
           buyer_name: string
           created_at: string
           customer_name: string
+          customer_number: string | null
+          dealer_number: string | null
           duration_months: number
           id: string
           notes: string | null
@@ -34,6 +36,8 @@ export type Database = {
           buyer_name?: string
           created_at?: string
           customer_name?: string
+          customer_number?: string | null
+          dealer_number?: string | null
           duration_months: number
           id?: string
           notes?: string | null
@@ -48,6 +52,8 @@ export type Database = {
           buyer_name?: string
           created_at?: string
           customer_name?: string
+          customer_number?: string | null
+          dealer_number?: string | null
           duration_months?: number
           id?: string
           notes?: string | null
