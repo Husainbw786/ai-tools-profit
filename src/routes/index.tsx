@@ -18,7 +18,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useSales } from "@/lib/sales-store";
+import { useSales } from "@/hooks/use-sales";
 import {
   filterByRange,
   formatMoney,
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/")({
 type Period = "lifetime" | "this-month" | "last-month" | "custom";
 
 function Index() {
-  const sales = useSales();
+  const { data: sales = [] } = useSales();
   const [period, setPeriod] = useState<Period>("lifetime");
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
@@ -66,7 +66,7 @@ function Index() {
   const totalCost = inRange.reduce((sum, s) => sum + s.buyPrice, 0);
 
   const activeSales = useMemo(
-    () => sales.filter((s) => !isExpired(s)).slice(0, 5),
+    () => sales.filter((s: Sale) => !isExpired(s)).slice(0, 5),
     [sales],
   );
 

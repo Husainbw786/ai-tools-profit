@@ -9,7 +9,7 @@ export type Sale = {
   buyPrice: number;
   sellPrice: number;
   warrantyStart: string; // ISO date
-  notes?: string;
+  notes?: string | null;
   createdAt: string;
 };
 

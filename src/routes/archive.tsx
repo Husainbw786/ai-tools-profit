@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { SaleDialog } from "@/components/SaleDialog";
 import { SalesList } from "@/components/SalesList";
 import { Input } from "@/components/ui/input";
-import { useSales } from "@/lib/sales-store";
+import { useSales } from "@/hooks/use-sales";
 import { isExpired, type Sale } from "@/lib/sale-utils";
 
 export const Route = createFileRoute("/archive")({
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/archive")({
 });
 
 function ArchivePage() {
-  const sales = useSales();
+  const { data: sales = [], isLoading } = useSales();
   const [q, setQ] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Sale | null>(null);
@@ -27,9 +27,9 @@ function ArchivePage() {
   const expired = useMemo(() => {
     const term = q.trim().toLowerCase();
     return sales
-      .filter((s) => isExpired(s))
+      .filter((s: Sale) => isExpired(s))
       .filter(
-        (s) =>
+        (s: Sale) =>
           !term ||
           s.productName.toLowerCase().includes(term) ||
           s.customerName.toLowerCase().includes(term),
@@ -56,7 +56,7 @@ function ArchivePage() {
       <div className="mt-4">
         <SalesList
           sales={expired}
-          emptyText="Nothing archived yet."
+          emptyText={isLoading ? "Loading…" : "Nothing archived yet."}
           onRowClick={(s) => { setEditing(s); setDialogOpen(true); }}
         />
       </div>
