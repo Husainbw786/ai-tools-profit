@@ -123,12 +123,13 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               <Label htmlFor="dur">Duration (months)</Label>
               <Input
                 id="dur"
-                type="number"
-                min={1}
-                value={form.durationMonths === 0 ? "" : form.durationMonths}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={form.durationMonths === 0 ? "" : String(form.durationMonths)}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => {
-                  const v = e.target.value;
+                  const v = e.target.value.replace(/\D/g, "");
                   setForm({ ...form, durationMonths: v === "" ? 0 : Number(v) });
                 }}
                 onBlur={() => {
@@ -191,28 +192,38 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               <Label htmlFor="buy">Buy price</Label>
               <Input
                 id="buy"
-                type="number"
-                min={0}
-                value={form.buyPrice === 0 ? "" : form.buyPrice}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={form.buyPrice === 0 ? "" : String(form.buyPrice)}
                 placeholder="0"
                 onFocus={(e) => e.target.select()}
-                onChange={(e) =>
-                  setForm({ ...form, buyPrice: e.target.value === "" ? 0 : Number(e.target.value) })
-                }
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  setForm({ ...form, buyPrice: v === "" ? 0 : Number(v) });
+                }}
+                onBlur={() => {
+                  if (form.buyPrice < 0) setForm({ ...form, buyPrice: 0 });
+                }}
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="sell">Sell price</Label>
               <Input
                 id="sell"
-                type="number"
-                min={0}
-                value={form.sellPrice === 0 ? "" : form.sellPrice}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={form.sellPrice === 0 ? "" : String(form.sellPrice)}
                 placeholder="0"
                 onFocus={(e) => e.target.select()}
-                onChange={(e) =>
-                  setForm({ ...form, sellPrice: e.target.value === "" ? 0 : Number(e.target.value) })
-                }
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  setForm({ ...form, sellPrice: v === "" ? 0 : Number(v) });
+                }}
+                onBlur={() => {
+                  if (form.sellPrice < 0) setForm({ ...form, sellPrice: 0 });
+                }}
               />
             </div>
           </div>
