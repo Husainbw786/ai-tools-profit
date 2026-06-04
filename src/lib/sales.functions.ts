@@ -14,6 +14,7 @@ const SaleInput = z.object({
   notes: z.string().max(2000).optional().nullable(),
   customerNumber: z.string().max(100).optional().nullable(),
   dealerNumber: z.string().max(100).optional().nullable(),
+  hasWarranty: z.boolean().default(true),
 });
 
 export type SaleDTO = {
@@ -28,6 +29,7 @@ export type SaleDTO = {
   notes: string | null;
   customerNumber: string | null;
   dealerNumber: string | null;
+  hasWarranty: boolean;
   createdAt: string;
 };
 
@@ -43,6 +45,7 @@ const toDTO = (row: any): SaleDTO => ({
   notes: row.notes ?? null,
   customerNumber: row.customer_number ?? null,
   dealerNumber: row.dealer_number ?? null,
+  hasWarranty: row.has_warranty ?? true,
   createdAt: row.created_at,
 });
 
@@ -77,6 +80,7 @@ export const createSale = createServerFn({ method: "POST" })
         notes: data.notes ?? null,
         customer_number: data.customerNumber ?? null,
         dealer_number: data.dealerNumber ?? null,
+        has_warranty: data.hasWarranty,
       })
       .select("*")
       .single();
@@ -103,6 +107,7 @@ export const updateSale = createServerFn({ method: "POST" })
     if (p.notes !== undefined) payload.notes = p.notes;
     if (p.customerNumber !== undefined) payload.customer_number = p.customerNumber;
     if (p.dealerNumber !== undefined) payload.dealer_number = p.dealerNumber;
+    if (p.hasWarranty !== undefined) payload.has_warranty = p.hasWarranty;
     const { data: row, error } = await supabase
       .from("sales")
       .update(payload)
