@@ -1,64 +1,56 @@
-# Subscription Resale Tracker — Plan
+## Goal
 
-A mobile-friendly single-user app to log subscription resales (LinkedIn Premium, etc.), track warranty periods, and view profit metrics.
+Mirror every sale to **one Google Sheet you own**, with **one tab per user** (so your data and your friend's data stay in separate tabs but live in the same spreadsheet). Also backfill all existing sales from the database into the sheet on first run.
 
-## Pages
+DB stays the source of truth — Sheets is a best-effort backup.
 
-1. **Home / Dashboard** (`/`)
-   - Big profit metric card (Lifetime by default)
-   - Date range switcher: Lifetime · This month · Last month · Custom range (date picker)
-   - Secondary stats: total sales count, total revenue, total cost
-   - Quick "Add Sale" button
-   - Recent active sales (last 5)
+## Setup steps
 
-2. **Active Sales** (`/sales`)
-   - List/table of all sales currently under warranty
-   - Each row: product, customer, sell price, profit, warranty start → end, days remaining
-   - Filter / search by product or customer
-   - "Add Sale" button (opens form/dialog)
-   - Click row → edit/delete
+1. **Connect Google Sheets** — link the Google Sheets connector to this project (one-time, uses your Google account).
+2. **You create one empty Google Sheet** in your Drive (any name, e.g. "AI Tools Sales Backup"). Leave the default `Sheet1` tab — the code will create per-user tabs as needed.
+3. **You paste the spreadsheet ID** (the long string in the sheet URL). I'll store it as a project secret `SALES_SHEET_ID`.
 
-3. **Expired / Archive** (`/archive`)
-   - Sales whose warranty has ended
-   - Rendered in **lighter/muted color** to visually distinguish
-   - Same columns as active, plus "expired on" date
+## Per-user tab convention
 
-4. **Add / Edit Sale** (dialog from any page)
-   - Product name (e.g. "LinkedIn Premium Career")
-   - Duration (e.g. 3 months) — drives warranty end date
-   - Buyer name (where you sourced it)
-   - Customer name (who you sold to)
-   - Buy price, Sell price → profit shown live
-   - Warranty start date (default: today)
-   - Notes (optional)
+- Tab name = the user's email (e.g. `alice@gmail.com`). Falls back to user id if email is missing.
+- Each tab gets a header row on creation:
+  `id | product_name | duration_months | buyer_name | customer_name | customer_number | dealer_number | buy_price | sell_price | warranty_start | has_warranty | notes | created_at | updated_at`
+- The code auto-creates the tab + headers the first time it sees a new user.
 
-## Behavior
+## What I'll build
 
-- A sale is **Active** if `today < warranty_start + duration`, otherwise **Expired** — derived, not stored. No manual archive needed; expired sales automatically move to the Archive section and active list dims them out.
-- Profit = sell_price − buy_price, computed on the fly.
-- Date-range metrics filter sales by `warranty_start` (sale date).
+- `src/lib/sheets.server.ts` — server-only helper hitting the Lovable connector gateway:
+  - `ensureUserTab(email)` — checks spreadsheet metadata, creates a tab + header row if missing (cached in-memory per request)
+  - `appendSaleRow(email, sale)` — append on create
+  - `upsertSaleRow(email, sale)` — find row by `id` in column A, update if found, else append (used on edit)
+  - `deleteSaleRow(email, id)` — find row by `id` and clear it
+  - All wrapped in try/catch — Sheet failures log a warning but never fail the DB write.
+- `src/lib/sales.functions.ts` — after each successful `createSale` / `updateSale` / `deleteSale`, look up the user's email via `supabaseAdmin.auth.admin.getUserById(userId)` and call the matching sheet helper.
+- **Backfill server fn** `backfillSalesToSheet`:
+  - Admin-only (gated by your user id, hardcoded for now — tell me if you want a roles table instead).
+  - Reads all sales grouped by `user_id`, looks up each user's email, creates a tab per user, writes all their rows in one batch.
+  - Exposed via a small "Sync existing data to Google Sheet" button on the Sales page (visible only to you). Safe to run multiple times — re-run replaces tab contents.
 
-## UI / Design
+## Technical details
 
-- Clean, mobile-first. Single-column on phone, comfortable table on desktop.
-- Dashboard hero = one large profit number with the period selector right beside it.
-- Active rows: full color. Expired rows: muted/grayed (lower opacity, muted text).
-- shadcn components: Card, Table, Dialog, Button, Input, Calendar (date picker), Select, Tabs.
-- Navigation: simple top bar with Dashboard · Active · Archive.
+- Connector: `google_sheets` (gateway, no per-user OAuth needed since it's your sheet)
+- Headers: `Authorization: Bearer ${LOVABLE_API_KEY}` + `X-Connection-Api-Key: ${GOOGLE_SHEETS_API_KEY}`
+- Endpoints:
+  - `GET /v4/spreadsheets/{id}` — list existing tabs
+  - `POST /v4/spreadsheets/{id}:batchUpdate` — add new tab (`addSheet` request)
+  - `GET /v4/spreadsheets/{id}/values/{tab}!A:A` — locate row by id
+  - `POST .../values/{tab}:append?valueInputOption=USER_ENTERED` — append
+  - `PUT .../values/{tab}!A{row}:N{row}?valueInputOption=USER_ENTERED` — update
+- No DB schema changes.
 
-## Tech (backend phase — after UI approval)
+## What you get
 
-- **Lovable Cloud** enabled for persistence.
-- Single table `sales`:
-  - `id`, `product_name`, `duration_months`, `buyer_name`, `customer_name`, `buy_price`, `sell_price`, `warranty_start`, `notes`, `created_at`
-- Since "just me", auth can be a single email/password login (or we can skip auth entirely if you prefer — your call when we wire backend).
-- All profit/expiry logic derived client-side from the row.
+- One spreadsheet, multiple tabs (one per user), real-time mirrored.
+- Existing data backfilled on demand via a button.
+- App keeps working even if Google is unreachable.
 
-## Build Order
+## Out of scope (ask if you want later)
 
-1. UI scaffold with mock data — dashboard, active list, archive, add/edit dialog
-2. Polish mobile responsiveness + expired-row styling
-3. Enable Lovable Cloud, create `sales` table, wire CRUD
-4. Hook up real metrics with date filtering
-
-Stage 1 (UI with mock data) is what we'll do first so you can click through and approve the flow before any backend work.
+- Two-way sync (sheet edits → DB).
+- Per-user separate spreadsheets (would need per-user Google OAuth).
+- A proper admin role system (we'll hardcode your user id for the backfill button — say the word and I'll add a `user_roles` table instead).
