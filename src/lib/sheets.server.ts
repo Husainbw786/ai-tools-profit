@@ -51,6 +51,14 @@ function sheetId() {
   return id;
 }
 
+function asText(v: string | null | undefined): string {
+  const s = (v ?? "").toString();
+  if (!s) return "";
+  // Leading + or = would be parsed as a formula by USER_ENTERED → #ERROR.
+  // Prefix with apostrophe to force text (Sheets hides the apostrophe).
+  return /^[=+\-@]/.test(s) ? `'${s}` : s;
+}
+
 function rowFor(sale: SaleRow): (string | number | boolean)[] {
   return [
     sale.id,
@@ -58,8 +66,8 @@ function rowFor(sale: SaleRow): (string | number | boolean)[] {
     sale.duration_months,
     sale.buyer_name ?? "",
     sale.customer_name ?? "",
-    sale.customer_number ?? "",
-    sale.dealer_number ?? "",
+    asText(sale.customer_number),
+    asText(sale.dealer_number),
     Number(sale.buy_price),
     Number(sale.sell_price),
     sale.warranty_start,
