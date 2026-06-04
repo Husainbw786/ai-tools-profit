@@ -2,7 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
-import { Plus, CalendarIcon } from "lucide-react";
+import {
+  Plus,
+  CalendarIcon,
+  ArrowUpRight,
+  TrendingUp,
+  Receipt,
+  Wallet,
+} from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleDialog } from "@/components/SaleDialog";
 import { SalesList } from "@/components/SalesList";
@@ -70,60 +77,122 @@ function Index() {
     [sales],
   );
 
+  const periodLabel = {
+    lifetime: "Lifetime",
+    "this-month": "This month",
+    "last-month": "Last month",
+    custom: "Custom range",
+  }[period];
+
   return (
     <AppLayout>
       <h1 className="sr-only">Dashboard</h1>
 
-      <Card className="p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-muted-foreground">Profit</div>
-          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-            <SelectTrigger className="h-8 w-[160px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="lifetime">Lifetime</SelectItem>
-              <SelectItem value="this-month">This month</SelectItem>
-              <SelectItem value="last-month">Last month</SelectItem>
-              <SelectItem value="custom">Custom range</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="mt-2 text-4xl font-bold tracking-tight md:text-5xl">
-          {formatMoney(totalProfit)}
-        </div>
-        {period === "custom" && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <DateBtn date={customFrom} onChange={setCustomFrom} label="From" />
-            <DateBtn date={customTo} onChange={setCustomTo} label="To" />
+      <Card
+        className="relative overflow-hidden border-0 p-0 text-primary-foreground shadow-[var(--shadow-elegant)]"
+        style={{ backgroundImage: "var(--gradient-hero)" }}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full opacity-25 blur-3xl"
+          style={{ background: "var(--primary-glow)" }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+            backgroundSize: "22px 22px",
+          }}
+        />
+        <div className="relative p-6 md:p-8">
+          <div className="flex items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wider backdrop-blur">
+              <TrendingUp className="size-3" />
+              Net profit · {periodLabel}
+            </div>
+            <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+              <SelectTrigger className="h-8 w-[140px] border-white/20 bg-white/10 text-xs text-primary-foreground backdrop-blur hover:bg-white/15 focus:ring-white/30">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="lifetime">Lifetime</SelectItem>
+                <SelectItem value="this-month">This month</SelectItem>
+                <SelectItem value="last-month">Last month</SelectItem>
+                <SelectItem value="custom">Custom range</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
-        <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
-          <Stat label="Sales" value={String(inRange.length)} />
-          <Stat label="Revenue" value={formatMoney(totalRevenue)} />
-          <Stat label="Cost" value={formatMoney(totalCost)} />
+          <div className="mt-5 font-display text-[2.75rem] font-bold leading-none tracking-tight md:text-6xl">
+            {formatMoney(totalProfit)}
+          </div>
+          <div className="mt-2 text-xs text-white/70">
+            From {inRange.length} sale{inRange.length === 1 ? "" : "s"} this period
+          </div>
+          {period === "custom" && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <DateBtn date={customFrom} onChange={setCustomFrom} label="From" />
+              <DateBtn date={customTo} onChange={setCustomTo} label="To" />
+            </div>
+          )}
         </div>
       </Card>
 
-      <div className="mt-6 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground">Recent active</h2>
-        <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="size-4" /> Add sale
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <Stat
+          icon={<Receipt className="size-3.5" />}
+          label="Sales"
+          value={String(inRange.length)}
+        />
+        <Stat
+          icon={<ArrowUpRight className="size-3.5" />}
+          label="Revenue"
+          value={formatMoney(totalRevenue)}
+        />
+        <Stat
+          icon={<Wallet className="size-3.5" />}
+          label="Cost"
+          value={formatMoney(totalCost)}
+        />
+      </div>
+
+      <div className="mt-8 flex items-end justify-between">
+        <div>
+          <h2 className="font-display text-lg font-semibold tracking-tight">
+            Recent active
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Latest subscriptions still under warranty
+          </p>
+        </div>
+        <Button
+          size="sm"
+          className="rounded-full shadow-[var(--shadow-soft)]"
+          onClick={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus className="size-4" /> Add
         </Button>
       </div>
-      <div className="mt-3">
+      <div className="mt-4">
         <SalesList
           sales={activeSales}
           emptyText="No active sales. Add your first one."
-          onRowClick={(s) => { setEditing(s); setDialogOpen(true); }}
+          onRowClick={(s) => {
+            setEditing(s);
+            setDialogOpen(true);
+          }}
         />
         {activeSales.length > 0 && (
-          <div className="mt-3 text-center">
+          <div className="mt-4 text-center">
             <Link
               to="/sales"
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
             >
-              View all active →
+              View all active <ArrowUpRight className="size-3" />
             </Link>
           </div>
         )}
@@ -134,13 +203,26 @@ function Index() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+}) {
   return (
-    <div className="rounded-md border bg-card px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
+    <div className="rounded-2xl border border-border/70 bg-card p-3 shadow-[var(--shadow-soft)]">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        {icon}
+        <span className="text-[10px] font-medium uppercase tracking-wider">
+          {label}
+        </span>
       </div>
-      <div className="mt-0.5 truncate text-sm font-semibold">{value}</div>
+      <div className="mt-1 truncate font-display text-base font-semibold tracking-tight">
+        {value}
+      </div>
     </div>
   );
 }
