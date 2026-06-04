@@ -85,6 +85,9 @@ export const createSale = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+    const { appendSaleRow, resolveTabName } = await import("@/lib/sheets.server");
+    const tab = await resolveTabName(userId);
+    await appendSaleRow(tab, row as any);
     return toDTO(row);
   });
 
@@ -115,6 +118,9 @@ export const updateSale = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+    const { upsertSaleRow, resolveTabName } = await import("@/lib/sheets.server");
+    const tab = await resolveTabName((row as any).user_id);
+    await upsertSaleRow(tab, row as any);
     return toDTO(row);
   });
 
@@ -123,7 +129,53 @@ export const deleteSale = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
+    const { data: existing } = await supabase
+      .from("sales")
+      .select("user_id")
+      .eq("id", data.id)
+      .single();
     const { error } = await supabase.from("sales").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    if (existing?.user_id) {
+      const { deleteSaleRow, resolveTabName } = await import("@/lib/sheets.server");
+      const tab = await resolveTabName(existing.user_id);
+      await deleteSaleRow(tab, data.id);
+    }
     return { ok: true };
+  });
+
+export const isAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    return { isAdmin: context.userId === process.env.ADMIN_USER_ID };
+  });
+
+export const backfillSalesToSheet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    if (context.userId !== process.env.ADMIN_USER_ID) {
+      throw new Error("Forbidden");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { replaceUserSheet, resolveTabName } = await import("@/lib/sheets.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("sales")
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    const byUser = new Map<string, any[]>();
+    for (const r of rows ?? []) {
+      const arr = byUser.get(r.user_id) ?? [];
+      arr.push(r);
+      byUser.set(r.user_id, arr);
+    }
+    let users = 0;
+    let total = 0;
+    for (const [userId, list] of byUser) {
+      const tab = await resolveTabName(userId);
+      await replaceUserSheet(tab, list);
+      users++;
+      total += list.length;
+    }
+    return { users, total };
   });
