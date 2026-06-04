@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useCreateSale, useDeleteSale, useUpdateSale } from "@/hooks/use-sales";
 import { formatMoney, type Sale } from "@/lib/sale-utils";
@@ -37,6 +38,7 @@ const empty = {
   notes: "",
   customerNumber: "",
   dealerNumber: "",
+  hasWarranty: true,
 };
 
 export function SaleDialog({ open, onOpenChange, sale }: Props) {
@@ -61,6 +63,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               notes: sale.notes ?? "",
               customerNumber: sale.customerNumber ?? "",
               dealerNumber: sale.dealerNumber ?? "",
+              hasWarranty: sale.hasWarranty,
             }
           : { ...empty, warrantyStart: new Date().toISOString() },
       );
