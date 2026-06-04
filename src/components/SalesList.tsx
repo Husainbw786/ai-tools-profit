@@ -40,7 +40,19 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate font-medium">{s.productName}</div>
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{s.productName}</span>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                      s.hasWarranty
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-muted-foreground/20 bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {s.hasWarranty ? "Warranty" : "No warranty"}
+                  </span>
+                </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {s.customerName || "—"} · {s.durationMonths}mo
                 </div>
