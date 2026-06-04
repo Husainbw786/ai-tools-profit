@@ -47,7 +47,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </span>
             <div className="leading-tight">
               <div className="font-display text-[15px] font-semibold tracking-tight">
-                SubTracker
+                ProfitAI
               </div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                 Resale ledger

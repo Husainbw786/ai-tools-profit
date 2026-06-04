@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
-    meta: [{ title: "Sign in — SubTracker" }],
+    meta: [{ title: "Sign in — ProfitAI" }],
   }),
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
@@ -67,7 +67,7 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">SubTracker</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">ProfitAI</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {mode === "signin" ? "Sign in to your account" : "Create your account"}
         </p>
