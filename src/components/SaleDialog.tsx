@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useCreateSale, useDeleteSale, useUpdateSale } from "@/hooks/use-sales";
 import { formatMoney, type Sale } from "@/lib/sale-utils";
@@ -37,6 +38,7 @@ const empty = {
   notes: "",
   customerNumber: "",
   dealerNumber: "",
+  hasWarranty: true,
 };
 
 export function SaleDialog({ open, onOpenChange, sale }: Props) {
@@ -61,6 +63,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               notes: sale.notes ?? "",
               customerNumber: sale.customerNumber ?? "",
               dealerNumber: sale.dealerNumber ?? "",
+              hasWarranty: sale.hasWarranty,
             }
           : { ...empty, warrantyStart: new Date().toISOString() },
       );
@@ -259,6 +262,22 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             >
               {formatMoney(profit)}
             </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <div>
+              <Label htmlFor="hasWarranty" className="cursor-pointer">
+                Under warranty
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Tag this product as covered by a warranty.
+              </p>
+            </div>
+            <Switch
+              id="hasWarranty"
+              checked={form.hasWarranty}
+              onCheckedChange={(v) => setForm({ ...form, hasWarranty: v })}
+            />
           </div>
 
           <div className="space-y-1.5">

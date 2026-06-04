@@ -12,6 +12,7 @@ export type Sale = {
   notes?: string | null;
   customerNumber?: string | null;
   dealerNumber?: string | null;
+  hasWarranty: boolean;
   createdAt: string;
 };
 
