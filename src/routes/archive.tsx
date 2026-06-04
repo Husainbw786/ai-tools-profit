@@ -11,7 +11,7 @@ import { isExpired, type Sale } from "@/lib/sale-utils";
 export const Route = createFileRoute("/archive")({
   head: () => ({
     meta: [
-      { title: "Archive — SubTracker" },
+      { title: "Archive — ProfitAI" },
       { name: "description", content: "Expired subscription sales." },
     ],
   }),
