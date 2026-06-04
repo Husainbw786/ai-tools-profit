@@ -43,7 +43,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="grid size-9 place-items-center rounded-xl text-primary-foreground shadow-[var(--shadow-elegant)]"
               style={{ backgroundImage: "var(--gradient-primary)" }}
             >
-              <TrendingUp className="size-4.5" strokeWidth={2.5} />
+              <TrendingUp className="size-5" strokeWidth={2.5} />
             </span>
             <div className="leading-tight">
               <div className="font-display text-[15px] font-semibold tracking-tight">
