@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { ChevronRight, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   daysRemaining,
@@ -18,57 +19,92 @@ type Props = {
 export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Props) {
   if (sales.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+      <div className="rounded-2xl border border-dashed border-border/80 bg-card/50 py-14 text-center text-sm text-muted-foreground">
         {emptyText}
       </div>
     );
   }
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2.5">
       {sales.map((s) => {
         const expired = isExpired(s);
         const end = warrantyEnd(s);
         const days = daysRemaining(s);
+        const urgent = !expired && days <= 7;
+        const p = profit(s);
         return (
           <li
             key={s.id}
             onClick={() => onRowClick?.(s)}
             className={cn(
-              "cursor-pointer rounded-lg border bg-card p-3 transition hover:border-foreground/20",
-              expired && "opacity-60",
+              "group relative cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[var(--shadow-elegant)] active:translate-y-0",
+              expired && "opacity-65",
             )}
           >
+            <div
+              aria-hidden
+              className={cn(
+                "absolute left-0 top-0 h-full w-1",
+                expired
+                  ? "bg-muted"
+                  : urgent
+                    ? "bg-destructive"
+                    : s.hasWarranty
+                      ? "bg-accent"
+                      : "bg-muted",
+              )}
+            />
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate font-medium">{s.productName}</span>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-                      s.hasWarranty
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "border-muted-foreground/20 bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {s.hasWarranty ? "Warranty" : "No warranty"}
+                  <span className="truncate font-display text-[15px] font-semibold tracking-tight">
+                    {s.productName}
                   </span>
                 </div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  {s.customerName || "—"} · {s.durationMonths}mo
+                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="truncate">{s.customerName || "—"}</span>
+                  <span className="text-border">•</span>
+                  <span className="shrink-0">{s.durationMonths}mo</span>
+                  {s.hasWarranty && (
+                    <span className="ml-1 shrink-0 rounded-full bg-accent/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent">
+                      Warr
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="text-right">
-                <div className="font-semibold">{formatMoney(profit(s))}</div>
-                <div className="text-xs text-muted-foreground">
-                  {formatMoney(s.sellPrice)}
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <div
+                    className={cn(
+                      "font-display text-base font-bold tracking-tight",
+                      p > 0 ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {formatMoney(p)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    sold {formatMoney(s.sellPrice)}
+                  </div>
                 </div>
+                <ChevronRight className="size-4 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                {format(new Date(s.warrantyStart), "MMM d")} → {format(end, "MMM d, yyyy")}
+            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5 text-[11px]">
+              <span className="text-muted-foreground">
+                {format(new Date(s.warrantyStart), "MMM d")} →{" "}
+                {format(end, "MMM d, yyyy")}
               </span>
-              <span className={cn(expired ? "" : days <= 7 && "text-foreground")}>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium",
+                  expired
+                    ? "bg-muted text-muted-foreground"
+                    : urgent
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-secondary text-secondary-foreground",
+                )}
+              >
+                <Clock className="size-3" />
                 {expired ? `Expired ${format(end, "MMM d")}` : `${days}d left`}
               </span>
             </div>
