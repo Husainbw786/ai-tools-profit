@@ -23,6 +23,7 @@ export type Database = {
           customer_number: string | null
           dealer_number: string | null
           duration_months: number
+          has_warranty: boolean
           id: string
           notes: string | null
           product_name: string
@@ -39,6 +40,7 @@ export type Database = {
           customer_number?: string | null
           dealer_number?: string | null
           duration_months: number
+          has_warranty?: boolean
           id?: string
           notes?: string | null
           product_name: string
@@ -55,6 +57,7 @@ export type Database = {
           customer_number?: string | null
           dealer_number?: string | null
           duration_months?: number
+          has_warranty?: boolean
           id?: string
           notes?: string | null
           product_name?: string

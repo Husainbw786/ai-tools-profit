@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN has_warranty boolean NOT NULL DEFAULT true;
