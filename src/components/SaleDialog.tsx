@@ -264,6 +264,22 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             </span>
           </div>
 
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <div>
+              <Label htmlFor="hasWarranty" className="cursor-pointer">
+                Under warranty
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Tag this product as covered by a warranty.
+              </p>
+            </div>
+            <Switch
+              id="hasWarranty"
+              checked={form.hasWarranty}
+              onCheckedChange={(v) => setForm({ ...form, hasWarranty: v })}
+            />
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="notes">Notes</Label>
             <Textarea
