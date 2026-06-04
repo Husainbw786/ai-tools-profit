@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useAuth } from "@/hooks/use-auth";
 import {
   createSale,
   deleteSale,
@@ -14,10 +15,12 @@ export const SALES_KEY = ["sales"] as const;
 
 export function useSales() {
   const list = useServerFn(listSales);
+  const { session, loading } = useAuth();
   return useQuery({
     queryKey: SALES_KEY,
     queryFn: () => list(),
     staleTime: 30_000,
+    enabled: !loading && !!session,
   });
 }
 
