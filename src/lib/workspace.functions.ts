@@ -45,20 +45,21 @@ async function findUserIdByEmail(email: string): Promise<string | null> {
   return null;
 }
 
-async function ensureWorkspaceFor(supabase: any, userId: string, email: string) {
-  const { data: existing } = await supabase
+async function ensureWorkspaceFor(userId: string, email: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: existing } = await supabaseAdmin
     .from("workspaces")
     .select("*")
     .eq("owner_id", userId)
     .maybeSingle();
   if (existing) return existing;
-  const { data: ws, error } = await supabase
+  const { data: ws, error } = await supabaseAdmin
     .from("workspaces")
     .insert({ owner_id: userId, name: `${email.split("@")[0] || "My"}'s space` })
     .select("*")
     .single();
   if (error) throw new Error(error.message);
-  await supabase
+  await supabaseAdmin
     .from("workspace_members")
     .insert({ workspace_id: ws.id, user_id: userId, role: "owner" });
   return ws;
@@ -88,7 +89,7 @@ export const getWorkspaceHub = createServerFn({ method: "GET" })
     const { supabase, userId, claims } = context;
     const email = (claims.email as string) || "";
     await claimInvitesFor(userId, email);
-    const myWs = await ensureWorkspaceFor(supabase, userId, email);
+    const myWs = await ensureWorkspaceFor(userId, email);
     const { data: memberships } = await supabase
       .from("workspace_members")
       .select("workspace_id, role, workspaces(id, name, owner_id)")
