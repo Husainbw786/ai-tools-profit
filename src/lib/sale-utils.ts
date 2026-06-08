@@ -1,5 +1,7 @@
 import { addMonths, differenceInCalendarDays } from "date-fns";
 
+export type PaymentStatus = "paid" | "unpaid" | "partial";
+
 export type Sale = {
   id: string;
   productName: string;
@@ -13,10 +15,17 @@ export type Sale = {
   customerNumber?: string | null;
   dealerNumber?: string | null;
   hasWarranty: boolean;
+  paymentStatus: PaymentStatus;
   createdAt: string;
 };
 
 export const profit = (s: Sale) => s.sellPrice - s.buyPrice;
+
+export const marginPct = (s: Sale) =>
+  s.buyPrice > 0 ? ((s.sellPrice - s.buyPrice) / s.buyPrice) * 100 : 0;
+
+export const formatPct = (n: number) =>
+  `${n > 0 ? "+" : ""}${n.toFixed(0)}%`;
 
 export const warrantyEnd = (s: Sale) =>
   addMonths(new Date(s.warrantyStart), s.durationMonths);
@@ -26,6 +35,16 @@ export const isExpired = (s: Sale, now: Date = new Date()) =>
 
 export const daysRemaining = (s: Sale, now: Date = new Date()) =>
   differenceInCalendarDays(warrantyEnd(s), now);
+
+export type UrgencyLevel = "expired" | "urgent" | "warning" | "healthy";
+
+export const urgencyLevel = (s: Sale, now: Date = new Date()): UrgencyLevel => {
+  if (isExpired(s, now)) return "expired";
+  const d = daysRemaining(s, now);
+  if (d <= 7) return "urgent";
+  if (d <= 30) return "warning";
+  return "healthy";
+};
 
 export const formatMoney = (n: number) =>
   new Intl.NumberFormat("en-IN", {
@@ -45,3 +64,34 @@ export const filterByRange = (sales: Sale[], range: DateRange | null) => {
     return t >= fromMs && t <= toMs;
   });
 };
+
+export function buildWhatsAppMessage(s: Sale): string {
+  const end = warrantyEnd(s);
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const statusLine =
+    s.paymentStatus === "paid"
+      ? "✅ Paid"
+      : s.paymentStatus === "partial"
+        ? "🟠 Partial payment"
+        : "🔴 Payment pending";
+  const lines = [
+    `*${s.productName}*`,
+    s.customerName ? `Customer: ${s.customerName}` : null,
+    `Duration: ${s.durationMonths} month${s.durationMonths === 1 ? "" : "s"}`,
+    s.hasWarranty
+      ? `Warranty: ${fmtDate(new Date(s.warrantyStart))} → ${fmtDate(end)}`
+      : `Start: ${fmtDate(new Date(s.warrantyStart))}`,
+    `Amount: ${formatMoney(s.sellPrice)}`,
+    statusLine,
+    "",
+    "_Sent via ProfitAI_",
+  ].filter(Boolean);
+  return lines.join("\n");
+}
+
+export function whatsAppUrl(s: Sale): string {
+  const phone = (s.customerNumber ?? "").replace(/[^0-9]/g, "");
+  const text = encodeURIComponent(buildWhatsAppMessage(s));
+  return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+}

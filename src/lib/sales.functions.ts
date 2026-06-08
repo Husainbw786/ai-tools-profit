@@ -15,6 +15,7 @@ const SaleInput = z.object({
   customerNumber: z.string().max(100).optional().nullable(),
   dealerNumber: z.string().max(100).optional().nullable(),
   hasWarranty: z.boolean().default(true),
+  paymentStatus: z.enum(["paid", "unpaid", "partial"]).default("paid"),
 });
 
 export type SaleDTO = {
@@ -30,6 +31,7 @@ export type SaleDTO = {
   customerNumber: string | null;
   dealerNumber: string | null;
   hasWarranty: boolean;
+  paymentStatus: "paid" | "unpaid" | "partial";
   createdAt: string;
 };
 
@@ -46,6 +48,7 @@ const toDTO = (row: any): SaleDTO => ({
   customerNumber: row.customer_number ?? null,
   dealerNumber: row.dealer_number ?? null,
   hasWarranty: row.has_warranty ?? true,
+  paymentStatus: (row.payment_status ?? "paid") as "paid" | "unpaid" | "partial",
   createdAt: row.created_at,
 });
 
@@ -81,7 +84,8 @@ export const createSale = createServerFn({ method: "POST" })
         customer_number: data.customerNumber ?? null,
         dealer_number: data.dealerNumber ?? null,
         has_warranty: data.hasWarranty,
-      })
+        payment_status: data.paymentStatus,
+      } as any)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
@@ -111,6 +115,7 @@ export const updateSale = createServerFn({ method: "POST" })
     if (p.customerNumber !== undefined) payload.customer_number = p.customerNumber;
     if (p.dealerNumber !== undefined) payload.dealer_number = p.dealerNumber;
     if (p.hasWarranty !== undefined) payload.has_warranty = p.hasWarranty;
+    if (p.paymentStatus !== undefined) (payload as any).payment_status = p.paymentStatus;
     const { data: row, error } = await supabase
       .from("sales")
       .update(payload)
