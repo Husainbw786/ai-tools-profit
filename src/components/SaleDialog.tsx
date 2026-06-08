@@ -18,8 +18,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useCreateSale, useDeleteSale, useSales, useUpdateSale } from "@/hooks/use-sales";
-import { formatMoney, type Sale } from "@/lib/sale-utils";
+import { formatMoney, whatsAppUrl, type PaymentStatus, type Sale } from "@/lib/sale-utils";
 import { toast } from "sonner";
+import { MessageCircle } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -39,6 +40,7 @@ const empty = {
   customerNumber: "",
   dealerNumber: "",
   hasWarranty: true,
+  paymentStatus: "paid" as PaymentStatus,
 };
 
 export function SaleDialog({ open, onOpenChange, sale }: Props) {
@@ -83,6 +85,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               customerNumber: sale.customerNumber ?? "",
               dealerNumber: sale.dealerNumber ?? "",
               hasWarranty: sale.hasWarranty,
+              paymentStatus: sale.paymentStatus,
             }
           : { ...empty, warrantyStart: new Date().toISOString() },
       );
@@ -336,6 +339,34 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             </span>
           </div>
 
+          <div className="space-y-1.5">
+            <Label>Payment status</Label>
+            <div className="grid grid-cols-3 gap-1.5 rounded-md border bg-muted/30 p-1">
+              {(["paid", "partial", "unpaid"] as PaymentStatus[]).map((s) => {
+                const active = form.paymentStatus === s;
+                const color =
+                  s === "paid"
+                    ? "bg-success text-white"
+                    : s === "partial"
+                      ? "bg-warning text-warning-foreground"
+                      : "bg-destructive text-destructive-foreground";
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setForm({ ...form, paymentStatus: s })}
+                    className={cn(
+                      "rounded px-2 py-1.5 text-xs font-medium capitalize transition-colors",
+                      active ? color : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex items-center justify-between rounded-md border px-3 py-2">
             <div>
               <Label htmlFor="hasWarranty" className="cursor-pointer">
@@ -364,9 +395,19 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
 
           <DialogFooter className="gap-2 sm:gap-2">
             {sale && (
-              <Button type="button" variant="destructive" onClick={remove} disabled={busy}>
-                Delete
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.open(whatsAppUrl(sale), "_blank")}
+                  className="gap-1"
+                >
+                  <MessageCircle className="size-4" /> WhatsApp
+                </Button>
+                <Button type="button" variant="destructive" onClick={remove} disabled={busy}>
+                  Delete
+                </Button>
+              </>
             )}
             <Button type="submit" disabled={busy}>
               {sale ? "Save" : "Add sale"}
