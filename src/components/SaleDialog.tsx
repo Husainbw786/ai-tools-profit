@@ -17,7 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { useCreateSale, useDeleteSale, useUpdateSale } from "@/hooks/use-sales";
+import { useCreateSale, useDeleteSale, useSales, useUpdateSale } from "@/hooks/use-sales";
 import { formatMoney, type Sale } from "@/lib/sale-utils";
 import { toast } from "sonner";
 
@@ -46,7 +46,26 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
   const createMut = useCreateSale();
   const updateMut = useUpdateSale();
   const deleteMut = useDeleteSale();
+  const { data: allSales = [] } = useSales();
   const busy = createMut.isPending || updateMut.isPending || deleteMut.isPending;
+
+  const uniq = (arr: (string | null | undefined)[]) =>
+    Array.from(new Set(arr.map((v) => (v ?? "").trim()).filter(Boolean)));
+  const productOpts = uniq(allSales.map((s) => s.productName));
+  const buyerOpts = uniq(allSales.map((s) => s.buyerName));
+  const customerOpts = uniq(allSales.map((s) => s.customerName));
+  const dealerNumOpts = uniq(allSales.map((s) => s.dealerNumber));
+  const customerNumOpts = uniq(allSales.map((s) => s.customerNumber));
+
+  // Lookup latest sale matching a customer name to auto-fill number
+  const findByCustomerName = (name: string) =>
+    allSales.find((s) => s.customerName.trim().toLowerCase() === name.trim().toLowerCase());
+  const findByCustomerNumber = (num: string) =>
+    allSales.find((s) => (s.customerNumber ?? "").trim() === num.trim());
+  const findByBuyerName = (name: string) =>
+    allSales.find((s) => s.buyerName.trim().toLowerCase() === name.trim().toLowerCase());
+  const findByDealerNumber = (num: string) =>
+    allSales.find((s) => (s.dealerNumber ?? "").trim() === num.trim());
 
   useEffect(() => {
     if (open) {
@@ -115,6 +134,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             <Label htmlFor="product">Product</Label>
             <Input
               id="product"
+                list="opt-products"
               placeholder="LinkedIn Premium Career"
               value={form.productName}
               onChange={(e) => setForm({ ...form, productName: e.target.value })}
@@ -174,18 +194,36 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               <Label htmlFor="buyer">Buyer</Label>
               <Input
                 id="buyer"
+                list="opt-buyers"
                 placeholder="Where you bought from"
                 value={form.buyerName}
-                onChange={(e) => setForm({ ...form, buyerName: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const match = findByBuyerName(v);
+                  setForm((f) => ({
+                    ...f,
+                    buyerName: v,
+                    dealerNumber: match && !f.dealerNumber ? match.dealerNumber ?? "" : f.dealerNumber,
+                  }));
+                }}
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="customer">Customer</Label>
               <Input
                 id="customer"
+                list="opt-customers"
                 placeholder="Who you sold to"
                 value={form.customerName}
-                onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const match = findByCustomerName(v);
+                  setForm((f) => ({
+                    ...f,
+                    customerName: v,
+                    customerNumber: match && !f.customerNumber ? match.customerNumber ?? "" : f.customerNumber,
+                  }));
+                }}
               />
             </div>
           </div>
@@ -236,21 +274,55 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               <Label htmlFor="dealerNum">Dealer number <span className="text-muted-foreground text-xs">(optional)</span></Label>
               <Input
                 id="dealerNum"
+                list="opt-dealer-nums"
                 placeholder="Buyer contact / ID"
                 value={form.dealerNumber}
-                onChange={(e) => setForm({ ...form, dealerNumber: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const match = findByDealerNumber(v);
+                  setForm((f) => ({
+                    ...f,
+                    dealerNumber: v,
+                    buyerName: match && !f.buyerName ? match.buyerName : f.buyerName,
+                  }));
+                }}
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="custNum">Customer number <span className="text-muted-foreground text-xs">(optional)</span></Label>
               <Input
                 id="custNum"
+                list="opt-customer-nums"
                 placeholder="Customer contact / ID"
                 value={form.customerNumber}
-                onChange={(e) => setForm({ ...form, customerNumber: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const match = findByCustomerNumber(v);
+                  setForm((f) => ({
+                    ...f,
+                    customerNumber: v,
+                    customerName: match && !f.customerName ? match.customerName : f.customerName,
+                  }));
+                }}
               />
             </div>
           </div>
+
+          <datalist id="opt-products">
+            {productOpts.map((v) => <option key={v} value={v} />)}
+          </datalist>
+          <datalist id="opt-buyers">
+            {buyerOpts.map((v) => <option key={v} value={v} />)}
+          </datalist>
+          <datalist id="opt-customers">
+            {customerOpts.map((v) => <option key={v} value={v} />)}
+          </datalist>
+          <datalist id="opt-dealer-nums">
+            {dealerNumOpts.map((v) => <option key={v} value={v} />)}
+          </datalist>
+          <datalist id="opt-customer-nums">
+            {customerNumOpts.map((v) => <option key={v} value={v} />)}
+          </datalist>
 
           <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Profit: </span>
