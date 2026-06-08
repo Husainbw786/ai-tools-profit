@@ -26,6 +26,7 @@ export type Database = {
           has_warranty: boolean
           id: string
           notes: string | null
+          payment_status: string
           product_name: string
           sell_price: number
           updated_at: string
@@ -43,6 +44,7 @@ export type Database = {
           has_warranty?: boolean
           id?: string
           notes?: string | null
+          payment_status?: string
           product_name: string
           sell_price?: number
           updated_at?: string
@@ -60,6 +62,7 @@ export type Database = {
           has_warranty?: boolean
           id?: string
           notes?: string | null
+          payment_status?: string
           product_name?: string
           sell_price?: number
           updated_at?: string
