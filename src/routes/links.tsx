@@ -1,0 +1,553 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import {
+  Link2,
+  Plus,
+  Trash2,
+  Pencil,
+  Users,
+  ExternalLink,
+  Crown,
+  UserPlus,
+  X,
+} from "lucide-react";
+import { AppLayout } from "@/components/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+  getWorkspaceHub,
+  getWorkspaceDetail,
+  addLink,
+  updateLink,
+  deleteLink,
+  inviteMember,
+  updateMemberRole,
+  removeMember,
+  revokeInvite,
+  type LinkDTO,
+} from "@/lib/workspace.functions";
+
+export const Route = createFileRoute("/links")({
+  head: () => ({
+    meta: [
+      { title: "Shared Links — ProfitAI" },
+      { name: "description", content: "Private collaborative workspace for shared links." },
+    ],
+  }),
+  component: LinksPage,
+});
+
+function LinksPage() {
+  const hubFn = useServerFn(getWorkspaceHub);
+  const { data: hub, isLoading } = useQuery({
+    queryKey: ["workspace-hub"],
+    queryFn: () => hubFn(),
+  });
+
+  const [activeWsId, setActiveWsId] = useState<string | null>(null);
+
+  const currentId = activeWsId ?? hub?.myWorkspace.id ?? null;
+
+  return (
+    <AppLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Shared Links</h1>
+          <p className="text-sm text-muted-foreground">
+            Collaborate on links with people you invite. Your sales data stays private.
+          </p>
+        </div>
+
+        {isLoading || !hub ? (
+          <div className="rounded-2xl border border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
+            Loading workspace…
+          </div>
+        ) : (
+          <Tabs
+            value={currentId === hub.myWorkspace.id ? "mine" : "shared"}
+            onValueChange={(v) => {
+              if (v === "mine") setActiveWsId(hub.myWorkspace.id);
+            }}
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="mine">My Space</TabsTrigger>
+              <TabsTrigger value="shared">
+                Shared with me
+                {hub.shared.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {hub.shared.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="mine" className="mt-4">
+              <WorkspaceView workspaceId={hub.myWorkspace.id} />
+            </TabsContent>
+            <TabsContent value="shared" className="mt-4">
+              {hub.shared.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
+                  No one has invited you yet. When they do, the space will show up here.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {hub.shared.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setActiveWsId(s.id)}
+                        className={`rounded-xl border p-4 text-left transition ${
+                          activeWsId === s.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border/70 bg-card hover:border-primary/40"
+                        }`}
+                      >
+                        <div className="font-medium">{s.name}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          You're a {s.role}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {activeWsId && activeWsId !== hub.myWorkspace.id && (
+                    <div className="pt-2">
+                      <WorkspaceView workspaceId={activeWsId} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
+    </AppLayout>
+  );
+}
+
+function WorkspaceView({ workspaceId }: { workspaceId: string }) {
+  const qc = useQueryClient();
+  const detailFn = useServerFn(getWorkspaceDetail);
+  const { data, isLoading } = useQuery({
+    queryKey: ["workspace", workspaceId],
+    queryFn: () => detailFn({ data: { workspaceId } }),
+  });
+
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<LinkDTO | null>(null);
+  const [membersOpen, setMembersOpen] = useState(false);
+
+  const addFn = useServerFn(addLink);
+  const updFn = useServerFn(updateLink);
+  const delFn = useServerFn(deleteLink);
+
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+
+  const saveMut = useMutation({
+    mutationFn: async (input: { title: string; url: string; note: string }) => {
+      if (editing) {
+        return updFn({
+          data: {
+            id: editing.id,
+            title: input.title,
+            url: input.url,
+            note: input.note || null,
+          },
+        });
+      }
+      return addFn({
+        data: {
+          workspaceId,
+          title: input.title,
+          url: input.url,
+          note: input.note || null,
+        },
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      setLinkDialogOpen(false);
+      setEditing(null);
+      toast.success(editing ? "Link updated" : "Link added");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Link deleted");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+  });
+
+  if (isLoading || !data) {
+    return (
+      <div className="rounded-2xl border border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+
+  const canEdit = data.myRole === "owner" || data.myRole === "editor";
+  const isOwner = data.myRole === "owner";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-card p-4">
+        <div>
+          <div className="font-display text-lg font-semibold">{data.workspace.name}</div>
+          <div className="text-xs text-muted-foreground">
+            {data.members.length} member{data.members.length === 1 ? "" : "s"} ·
+            you are {data.myRole}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setMembersOpen(true)}>
+            <Users className="mr-1.5 size-4" /> Members
+          </Button>
+          {canEdit && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditing(null);
+                setLinkDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-1.5 size-4" /> Add link
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {data.links.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/70 bg-card p-10 text-center text-sm text-muted-foreground">
+          <Link2 className="mx-auto mb-2 size-6 opacity-60" />
+          No links yet. {canEdit && "Add one to get started."}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {data.links.map((l) => (
+            <div
+              key={l.id}
+              className="rounded-xl border border-border/70 bg-card p-3.5 transition hover:border-primary/40"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={l.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group inline-flex items-center gap-1.5 font-medium text-foreground hover:text-primary"
+                  >
+                    {l.title}
+                    <ExternalLink className="size-3.5 opacity-60 group-hover:opacity-100" />
+                  </a>
+                  <div className="truncate text-xs text-muted-foreground">{l.url}</div>
+                  {l.note && (
+                    <div className="mt-1.5 text-sm text-muted-foreground">{l.note}</div>
+                  )}
+                  <div className="mt-2 text-[11px] uppercase tracking-wider text-muted-foreground/70">
+                    by {l.createdByEmail || "unknown"}
+                  </div>
+                </div>
+                {canEdit && (
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      onClick={() => {
+                        setEditing(l);
+                        setLinkDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-destructive"
+                      onClick={() => {
+                        if (confirm("Delete this link?")) delMut.mutate(l.id);
+                      }}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <LinkDialog
+        open={linkDialogOpen}
+        onOpenChange={(v) => {
+          setLinkDialogOpen(v);
+          if (!v) setEditing(null);
+        }}
+        initial={editing}
+        saving={saveMut.isPending}
+        onSave={(v) => saveMut.mutate(v)}
+      />
+
+      <MembersDialog
+        open={membersOpen}
+        onOpenChange={setMembersOpen}
+        workspaceId={workspaceId}
+        members={data.members}
+        invites={data.invites}
+        isOwner={isOwner}
+        onChanged={invalidate}
+      />
+    </div>
+  );
+}
+
+function LinkDialog({
+  open,
+  onOpenChange,
+  initial,
+  saving,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  initial: LinkDTO | null;
+  saving: boolean;
+  onSave: (v: { title: string; url: string; note: string }) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [note, setNote] = useState("");
+
+  useMemo(() => {
+    if (open) {
+      setTitle(initial?.title ?? "");
+      setUrl(initial?.url ?? "");
+      setNote(initial?.note ?? "");
+    }
+  }, [open, initial]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{initial ? "Edit link" : "Add link"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label>URL</Label>
+            <Input
+              type="url"
+              placeholder="https://…"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Note (optional)</Label>
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!title.trim() || !url.trim() || saving}
+            onClick={() => onSave({ title: title.trim(), url: url.trim(), note: note.trim() })}
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MembersDialog({
+  open,
+  onOpenChange,
+  workspaceId,
+  members,
+  invites,
+  isOwner,
+  onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  workspaceId: string;
+  members: { id: string; userId: string; email: string; role: "owner" | "editor" | "viewer" }[];
+  invites: { id: string; email: string; role: "owner" | "editor" | "viewer" }[];
+  isOwner: boolean;
+  onChanged: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"editor" | "viewer">("editor");
+
+  const inviteFn = useServerFn(inviteMember);
+  const updRoleFn = useServerFn(updateMemberRole);
+  const rmFn = useServerFn(removeMember);
+  const revFn = useServerFn(revokeInvite);
+
+  const inviteMut = useMutation({
+    mutationFn: () => inviteFn({ data: { workspaceId, email: email.trim(), role } }),
+    onSuccess: (res: any) => {
+      onChanged();
+      setEmail("");
+      toast.success(res.status === "added" ? "Member added" : "Invite sent (joins on next login)");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Members</DialogTitle>
+        </DialogHeader>
+
+        {isOwner && (
+          <div className="rounded-xl border border-border/70 bg-secondary/40 p-3">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">
+              Invite by email
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                type="email"
+                placeholder="brother@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1"
+              />
+              <Select value={role} onValueChange={(v) => setRole(v as any)}>
+                <SelectTrigger className="sm:w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="editor">Editor</SelectItem>
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => inviteMut.mutate()}
+                disabled={!email.trim() || inviteMut.isPending}
+              >
+                <UserPlus className="mr-1.5 size-4" /> Invite
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Members</div>
+          {members.map((m) => (
+            <div
+              key={m.id}
+              className="flex items-center justify-between rounded-lg border border-border/60 bg-card p-2.5"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 truncate text-sm font-medium">
+                  {m.role === "owner" && <Crown className="size-3.5 text-primary" />}
+                  {m.email || m.userId.slice(0, 8)}
+                </div>
+              </div>
+              {m.role === "owner" ? (
+                <Badge variant="secondary">Owner</Badge>
+              ) : isOwner ? (
+                <div className="flex items-center gap-1">
+                  <Select
+                    value={m.role}
+                    onValueChange={(v) =>
+                      updRoleFn({ data: { memberId: m.id, role: v as any } }).then(() =>
+                        onChanged(),
+                      )
+                    }
+                  >
+                    <SelectTrigger className="h-7 w-24 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="editor">Editor</SelectItem>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-destructive"
+                    onClick={() => {
+                      if (confirm(`Remove ${m.email}?`))
+                        rmFn({ data: { memberId: m.id } }).then(() => onChanged());
+                    }}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <Badge variant="outline">{m.role}</Badge>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {isOwner && invites.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">
+              Pending invites
+            </div>
+            {invites.map((i) => (
+              <div
+                key={i.id}
+                className="flex items-center justify-between rounded-lg border border-dashed border-border/60 bg-card p-2.5"
+              >
+                <div className="text-sm">
+                  {i.email}
+                  <span className="ml-2 text-xs text-muted-foreground">({i.role})</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-destructive"
+                  onClick={() =>
+                    revFn({ data: { inviteId: i.id } }).then(() => onChanged())
+                  }
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
