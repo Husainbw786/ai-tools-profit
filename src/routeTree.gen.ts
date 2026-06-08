@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LinksRouteImport } from './routes/links'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CustomerNameRouteImport } from './routes/customer.$name'
@@ -23,6 +24,11 @@ const SalesRoute = SalesRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinksRoute = LinksRouteImport.update({
+  id: '/links',
+  path: '/links',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArchiveRoute = ArchiveRouteImport.update({
@@ -44,6 +50,7 @@ const CustomerNameRoute = CustomerNameRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
+  '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
+  '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
@@ -59,21 +67,36 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
+  '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/archive' | '/login' | '/sales' | '/customer/$name'
+  fullPaths:
+    | '/'
+    | '/archive'
+    | '/links'
+    | '/login'
+    | '/sales'
+    | '/customer/$name'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/archive' | '/login' | '/sales' | '/customer/$name'
-  id: '__root__' | '/' | '/archive' | '/login' | '/sales' | '/customer/$name'
+  to: '/' | '/archive' | '/links' | '/login' | '/sales' | '/customer/$name'
+  id:
+    | '__root__'
+    | '/'
+    | '/archive'
+    | '/links'
+    | '/login'
+    | '/sales'
+    | '/customer/$name'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchiveRoute: typeof ArchiveRoute
+  LinksRoute: typeof LinksRoute
   LoginRoute: typeof LoginRoute
   SalesRoute: typeof SalesRoute
   CustomerNameRoute: typeof CustomerNameRoute
@@ -93,6 +116,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/links': {
+      id: '/links'
+      path: '/links'
+      fullPath: '/links'
+      preLoaderRoute: typeof LinksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/archive': {
@@ -122,6 +152,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchiveRoute: ArchiveRoute,
+  LinksRoute: LinksRoute,
   LoginRoute: LoginRoute,
   SalesRoute: SalesRoute,
   CustomerNameRoute: CustomerNameRoute,
@@ -129,13 +160,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -1,53 +1,57 @@
-## Scope
-Ship 6 features across the existing ProfitAI UI without changing how sales are saved (except adding a `payment_status` column).
+## Goal
 
-## 1. Expiry urgency badges
-Update `SalesList.tsx` so the right-side chip uses three tiers based on `daysRemaining`:
-- ≤ 7 days → red (`bg-destructive/10 text-destructive`)
-- ≤ 30 days → orange (new `--warning` token in `styles.css`)
-- > 30 days → green (existing `accent`)
-- expired → muted
-Left accent bar follows the same color.
+Add a new **Links** page where each user has their own shared workspace. They can invite collaborators by email (viewer / editor / owner) to add and manage links together — completely isolated from sales/hisab data.
 
-## 2. Profit margin % per row
-In `SalesList.tsx`, compute `margin = (profit / buyPrice) * 100` and render a small `+45%` chip under the absolute profit. Color-code: positive → accent, negative → destructive. Add `marginPct()` helper to `sale-utils.ts`.
+## What gets built
 
-## 3. Customer detail page
-- New route `src/routes/_authenticated/customer.$name.tsx` (lazy: create `_authenticated/route.tsx` only if not present — it already is, given login flow). Actually the project uses top-level routes with a login route, so add a regular route `src/routes/customer.$name.tsx`.
-- Page shows: customer name, phone, totals (orders, revenue, profit, avg margin), and full `SalesList` for that customer.
-- In `SalesList.tsx`, wrap the customer name in a `<Link to="/customer/$name" params={{ name }}>` (stopPropagation to keep row click working).
+### 1. New page: `/links`
+- Nav entry "Links" in `AppLayout` bottom tabs.
+- Two sections:
+  - **My Workspace** — the workspace owned by the current user. Lists links with title, URL, optional note, "added by" badge.
+  - **Shared with me** — workspaces other users have invited me to, each opens its own view.
+- Add / edit / delete link dialog (title, URL, note) — gated by role.
+- Members panel (visible to owner + admins): invite by email, list members with role chips, change role, remove member.
 
-## 4. Payment status tracking
-- DB migration: add `payment_status text not null default 'paid'` to `public.sales` (values: `paid`, `unpaid`, `partial`).
-- Extend `SaleDTO`, `Sale`, server validators, create/update/list mappers, and Google Sheets column (append `payment_status` as column O, update `HEADERS`/`rowFor`/range `A:N`→`A:O`).
-- `SaleDialog`: add a 3-button toggle (paid/unpaid/partial).
-- `SalesList`: show a colored pill (paid → green, partial → orange, unpaid → red) next to product name.
-- Dashboard: add an "Unpaid" stat tile + filter chip that, when active, narrows `activeSales` / `inRange` to non-paid rows.
+### 2. Database (new tables — isolated from `sales`)
+- `workspaces` — one per owner (`owner_id` unique).
+- `workspace_members` — `(workspace_id, user_id, role)` where role is `owner | editor | viewer`. Owner row auto-created.
+- `workspace_invites` — pending invites by `email` (lowercased) + role, consumed on first login by that email.
+- `workspace_links` — `workspace_id`, `title`, `url`, `note`, `created_by`.
 
-## 5. WhatsApp quick-share
-- Add helper `buildWhatsAppMessage(sale)` in `sale-utils.ts` producing a clean multi-line invoice (product, duration, dates, amount, payment status, your name).
-- In `SaleDialog` (edit mode) and in `SalesList` row swipe/menu, add a "Share on WhatsApp" button that opens `https://wa.me/<customerNumber?>?text=<encoded>` in a new tab.
+### 3. Access rules (RLS)
+- All four tables: only members of a workspace can read it. Editors/owners can write links. Only owner can manage members & invites.
+- Sales table is **untouched** — brother literally cannot query it.
+- A `SECURITY DEFINER` helper `is_workspace_member(_ws uuid, _user uuid, _min_role)` to keep policies recursion-free.
+- Auto-create the user's own workspace + owner membership on first visit (via a server fn `ensureMyWorkspace`).
+- Auto-consume matching `workspace_invites` for the signed-in user's email on login (server fn `claimPendingInvites`, called from the `/links` loader).
 
-## 6. Trend chart on dashboard
-- Add `recharts` (already common dep — install if missing).
-- New `components/ProfitTrendChart.tsx`: bar chart of last 6 months' profit, derived from `sales` via `date-fns` month bucketing.
-- Insert between hero card and the 3 stat tiles on `index.tsx`. Mobile-friendly height (~160px), uses semantic tokens.
+### 4. Server functions (`src/lib/workspace.functions.ts`)
+- `getMyWorkspaceData` → owner workspace + links + members.
+- `getSharedWorkspaces` → list of workspaces I'm a member of (not owner).
+- `getWorkspaceDetail(id)` → links + members for a workspace I belong to.
+- `addLink / updateLink / deleteLink` (role-gated).
+- `inviteMember(email, role)` → upsert into `workspace_invites`, plus immediately add if that user already exists in `auth.users`.
+- `updateMemberRole / removeMember` (owner only).
+- `claimPendingInvites` (called for current user's email on `/links` load).
 
-## Technical notes
-- Migration is the only schema change; everything else is frontend + small server-fn additions.
-- Add `--warning` HSL token in `src/styles.css` (orange tuned to Navy Trust palette).
-- All numeric formatting reuses `formatMoney`; new `formatPct`.
-- No changes to auth, routing shell, or Sheets connector behavior beyond the extra column.
+All use `requireSupabaseAuth`. Admin email lookups for invite-consumption use `supabaseAdmin` inside the handler.
 
-## Files touched
-- `supabase/migrations/<new>.sql` (add `payment_status`)
-- `src/lib/sale-utils.ts` (helpers, WA message, types)
-- `src/lib/sales.functions.ts` (validator, mappers)
-- `src/lib/sheets.server.ts` (column O)
-- `src/hooks/use-sales.ts` (type passthrough)
-- `src/components/SalesList.tsx` (badges, margin, link, payment pill, WA button)
-- `src/components/SaleDialog.tsx` (payment toggle, WA button)
-- `src/components/ProfitTrendChart.tsx` (new)
-- `src/routes/index.tsx` (chart + unpaid stat/filter)
-- `src/routes/customer.$name.tsx` (new)
-- `src/styles.css` (warning token)
+### 5. UI components
+- `src/routes/links.tsx` — main page with tabs ("My space" / "Shared with me") and workspace detail view.
+- `src/components/LinkDialog.tsx` — add/edit link form.
+- `src/components/MembersPanel.tsx` — invite input, member list with role dropdown.
+- Reuse existing Navy Trust palette and Digital Tools typography.
+
+### 6. Files touched
+**New:** migration, `src/lib/workspace.functions.ts`, `src/routes/links.tsx`, `src/components/LinkDialog.tsx`, `src/components/MembersPanel.tsx`.
+**Edited:** `src/components/AppLayout.tsx` (add nav entry).
+
+## Out of scope
+- Notes / checklists / file uploads (links only, per your choice).
+- Email notifications for invites (works silently — invitee sees the workspace when they next open Links).
+- Sales/hisab data stays 100% private. No cross-table joins. No shared visibility.
+
+## Notes
+- Brother just needs to log in with the email you invited; access is granted automatically on first `/links` visit.
+- Owner cannot be removed or demoted.
+- After approval, the database migration will run first, then the code is generated against the regenerated types.
