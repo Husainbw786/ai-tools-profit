@@ -13,6 +13,7 @@ import { Route as SalesRouteImport } from './routes/sales'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CustomerNameRouteImport } from './routes/customer.$name'
 
 const SalesRoute = SalesRouteImport.update({
   id: '/sales',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerNameRoute = CustomerNameRouteImport.update({
+  id: '/customer/$name',
+  path: '/customer/$name',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
+  '/customer/$name': typeof CustomerNameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
+  '/customer/$name': typeof CustomerNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/archive': typeof ArchiveRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
+  '/customer/$name': typeof CustomerNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/archive' | '/login' | '/sales'
+  fullPaths: '/' | '/archive' | '/login' | '/sales' | '/customer/$name'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/archive' | '/login' | '/sales'
-  id: '__root__' | '/' | '/archive' | '/login' | '/sales'
+  to: '/' | '/archive' | '/login' | '/sales' | '/customer/$name'
+  id: '__root__' | '/' | '/archive' | '/login' | '/sales' | '/customer/$name'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   ArchiveRoute: typeof ArchiveRoute
   LoginRoute: typeof LoginRoute
   SalesRoute: typeof SalesRoute
+  CustomerNameRoute: typeof CustomerNameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customer/$name': {
+      id: '/customer/$name'
+      path: '/customer/$name'
+      fullPath: '/customer/$name'
+      preLoaderRoute: typeof CustomerNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,7 +124,18 @@ const rootRouteChildren: RootRouteChildren = {
   ArchiveRoute: ArchiveRoute,
   LoginRoute: LoginRoute,
   SalesRoute: SalesRoute,
+  CustomerNameRoute: CustomerNameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

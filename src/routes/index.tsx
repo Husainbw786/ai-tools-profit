@@ -13,6 +13,7 @@ import {
 import { AppLayout } from "@/components/AppLayout";
 import { SaleDialog } from "@/components/SaleDialog";
 import { SalesList } from "@/components/SalesList";
+import { ProfitTrendChart } from "@/components/ProfitTrendChart";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -54,6 +55,7 @@ function Index() {
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Sale | null>(null);
+  const [unpaidOnly, setUnpaidOnly] = useState(false);
 
   const range: DateRange | null = useMemo(() => {
     const now = new Date();
@@ -67,14 +69,25 @@ function Index() {
     return null;
   }, [period, customFrom, customTo]);
 
-  const inRange = useMemo(() => filterByRange(sales, range), [sales, range]);
+  const inRange = useMemo(() => {
+    const base = filterByRange(sales, range);
+    return unpaidOnly ? base.filter((s) => s.paymentStatus !== "paid") : base;
+  }, [sales, range, unpaidOnly]);
   const totalProfit = inRange.reduce((sum, s) => sum + profit(s), 0);
   const totalRevenue = inRange.reduce((sum, s) => sum + s.sellPrice, 0);
   const totalCost = inRange.reduce((sum, s) => sum + s.buyPrice, 0);
+  const unpaidCount = sales.filter((s) => s.paymentStatus !== "paid").length;
+  const unpaidAmount = sales
+    .filter((s) => s.paymentStatus !== "paid")
+    .reduce((a, s) => a + s.sellPrice, 0);
 
   const activeSales = useMemo(
-    () => sales.filter((s: Sale) => !isExpired(s)).slice(0, 5),
-    [sales],
+    () => {
+      const base = sales.filter((s: Sale) => !isExpired(s));
+      const filtered = unpaidOnly ? base.filter((s) => s.paymentStatus !== "paid") : base;
+      return filtered.slice(0, 5);
+    },
+    [sales, unpaidOnly],
   );
 
   const periodLabel = {
@@ -155,6 +168,35 @@ function Index() {
           label="Cost"
           value={formatMoney(totalCost)}
         />
+      </div>
+
+      {unpaidCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setUnpaidOnly((v) => !v)}
+          className={cn(
+            "mt-3 flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition-colors",
+            unpaidOnly
+              ? "border-destructive bg-destructive/10 text-destructive"
+              : "border-border/70 bg-card hover:border-destructive/40",
+          )}
+        >
+          <div>
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Outstanding
+            </div>
+            <div className="font-display text-base font-semibold tracking-tight">
+              {unpaidCount} unpaid · {formatMoney(unpaidAmount)}
+            </div>
+          </div>
+          <span className="text-xs font-medium">
+            {unpaidOnly ? "Showing all unpaid" : "Tap to filter"}
+          </span>
+        </button>
+      )}
+
+      <div className="mt-4">
+        <ProfitTrendChart sales={sales} />
       </div>
 
       <div className="mt-8 flex items-end justify-between">
