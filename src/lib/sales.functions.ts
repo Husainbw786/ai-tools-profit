@@ -34,10 +34,11 @@ export type SaleDTO = {
   dealerNumber: string | null;
   hasWarranty: boolean;
   paymentStatus: "paid" | "unpaid" | "partial";
+  amountPaid: number;
   createdAt: string;
 };
 
-const toDTO = (row: any): SaleDTO => ({
+const toDTO = (row: any, amountPaid = 0): SaleDTO => ({
   id: row.id,
   productName: row.product_name,
   durationMonths: row.duration_months,
@@ -52,6 +53,7 @@ const toDTO = (row: any): SaleDTO => ({
   dealerNumber: row.dealer_number ?? null,
   hasWarranty: row.has_warranty ?? true,
   paymentStatus: (row.payment_status ?? "paid") as "paid" | "unpaid" | "partial",
+  amountPaid,
   createdAt: row.created_at,
 });
 
@@ -64,7 +66,15 @@ export const listSales = createServerFn({ method: "GET" })
       .select("*")
       .order("warranty_start", { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []).map(toDTO);
+    const { data: pays, error: payErr } = await supabase
+      .from("sale_payments")
+      .select("sale_id, amount");
+    if (payErr) throw new Error(payErr.message);
+    const paidBySale = new Map<string, number>();
+    for (const p of pays ?? []) {
+      paidBySale.set(p.sale_id, (paidBySale.get(p.sale_id) ?? 0) + Number(p.amount));
+    }
+    return (data ?? []).map((r) => toDTO(r, paidBySale.get(r.id) ?? 0));
   });
 
 export const createSale = createServerFn({ method: "POST" })
