@@ -289,6 +289,106 @@ function Stat({
 }
 
 function DateBtn({
+
+function GoalCard({
+  goal,
+  setGoal,
+  thisMonthProfit,
+}: {
+  goal: number;
+  setGoal: (n: number) => void;
+  thisMonthProfit: number;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>("");
+  const pct = goal > 0 ? Math.min(100, (thisMonthProfit / goal) * 100) : 0;
+  const reached = goal > 0 && thisMonthProfit >= goal;
+
+  if (!goal && !editing) {
+    return (
+      <Card className="mt-4 flex items-center justify-between gap-3 border-dashed p-4">
+        <div className="flex items-center gap-2">
+          <Target className="size-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">
+            Set a monthly profit goal
+          </span>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => { setDraft(""); setEditing(true); }}>
+          Set goal
+        </Button>
+      </Card>
+    );
+  }
+
+  if (editing) {
+    return (
+      <Card className="mt-4 p-4">
+        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <Target className="size-3.5" /> Monthly profit goal
+        </div>
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="e.g. 50000"
+            value={draft}
+            autoFocus
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
+          />
+          <Button
+            size="sm"
+            onClick={() => {
+              setGoal(Number(draft) || 0);
+              setEditing(false);
+            }}
+          >
+            <Check className="size-4" />
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mt-4 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <Target className="size-3.5" /> Monthly goal
+        </div>
+        <button
+          type="button"
+          onClick={() => { setDraft(String(goal)); setEditing(true); }}
+          className="rounded-full p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+          aria-label="Edit goal"
+        >
+          <Pencil className="size-3.5" />
+        </button>
+      </div>
+      <div className="mt-1 flex items-baseline justify-between">
+        <span className={cn("font-display text-xl font-bold tracking-tight", reached && "text-success")}>
+          {formatMoney(thisMonthProfit)}
+        </span>
+        <span className="text-xs text-muted-foreground">of {formatMoney(goal)}</span>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            reached ? "bg-success" : "bg-primary",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-1.5 text-[10px] text-muted-foreground">
+        {reached ? "Goal reached 🎉" : `${pct.toFixed(0)}% of monthly target`}
+      </div>
+    </Card>
+  );
+}
+
+function DateBtn({
   date,
   onChange,
   label,
