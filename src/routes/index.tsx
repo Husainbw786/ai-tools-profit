@@ -212,6 +212,12 @@ function Index() {
         <ProfitTrendChart sales={sales} />
       </div>
 
+      <GoalCard
+        goal={goal}
+        setGoal={setGoal}
+        thisMonthProfit={thisMonthProfit}
+      />
+
       <div className="mt-8 flex items-end justify-between">
         <div>
           <h2 className="font-display text-lg font-semibold tracking-tight">
