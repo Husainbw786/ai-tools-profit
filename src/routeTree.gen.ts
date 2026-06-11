@@ -13,9 +13,12 @@ import { Route as SalesRouteImport } from './routes/sales'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as DealersRouteImport } from './routes/dealers'
+import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DealerNameRouteImport } from './routes/dealer.$name'
 import { Route as CustomerNameRouteImport } from './routes/customer.$name'
 
 const SalesRoute = SalesRouteImport.update({
@@ -38,6 +41,16 @@ const InsightsRoute = InsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DealersRoute = DealersRouteImport.update({
+  id: '/dealers',
+  path: '/dealers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CollectionsRoute = CollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
@@ -53,6 +66,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DealerNameRoute = DealerNameRouteImport.update({
+  id: '/dealer/$name',
+  path: '/dealer/$name',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CustomerNameRoute = CustomerNameRouteImport.update({
   id: '/customer/$name',
   path: '/customer/$name',
@@ -63,32 +81,41 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/collections': typeof CollectionsRoute
+  '/customers': typeof CustomersRoute
+  '/dealers': typeof DealersRoute
   '/insights': typeof InsightsRoute
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
+  '/dealer/$name': typeof DealerNameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/collections': typeof CollectionsRoute
+  '/customers': typeof CustomersRoute
+  '/dealers': typeof DealersRoute
   '/insights': typeof InsightsRoute
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
+  '/dealer/$name': typeof DealerNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/collections': typeof CollectionsRoute
+  '/customers': typeof CustomersRoute
+  '/dealers': typeof DealersRoute
   '/insights': typeof InsightsRoute
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
+  '/dealer/$name': typeof DealerNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -96,42 +123,54 @@ export interface FileRouteTypes {
     | '/'
     | '/archive'
     | '/collections'
+    | '/customers'
+    | '/dealers'
     | '/insights'
     | '/links'
     | '/login'
     | '/sales'
     | '/customer/$name'
+    | '/dealer/$name'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/archive'
     | '/collections'
+    | '/customers'
+    | '/dealers'
     | '/insights'
     | '/links'
     | '/login'
     | '/sales'
     | '/customer/$name'
+    | '/dealer/$name'
   id:
     | '__root__'
     | '/'
     | '/archive'
     | '/collections'
+    | '/customers'
+    | '/dealers'
     | '/insights'
     | '/links'
     | '/login'
     | '/sales'
     | '/customer/$name'
+    | '/dealer/$name'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchiveRoute: typeof ArchiveRoute
   CollectionsRoute: typeof CollectionsRoute
+  CustomersRoute: typeof CustomersRoute
+  DealersRoute: typeof DealersRoute
   InsightsRoute: typeof InsightsRoute
   LinksRoute: typeof LinksRoute
   LoginRoute: typeof LoginRoute
   SalesRoute: typeof SalesRoute
   CustomerNameRoute: typeof CustomerNameRoute
+  DealerNameRoute: typeof DealerNameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -164,6 +203,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dealers': {
+      id: '/dealers'
+      path: '/dealers'
+      fullPath: '/dealers'
+      preLoaderRoute: typeof DealersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/collections': {
       id: '/collections'
       path: '/collections'
@@ -185,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dealer/$name': {
+      id: '/dealer/$name'
+      path: '/dealer/$name'
+      fullPath: '/dealer/$name'
+      preLoaderRoute: typeof DealerNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/customer/$name': {
       id: '/customer/$name'
       path: '/customer/$name'
@@ -199,12 +259,25 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchiveRoute: ArchiveRoute,
   CollectionsRoute: CollectionsRoute,
+  CustomersRoute: CustomersRoute,
+  DealersRoute: DealersRoute,
   InsightsRoute: InsightsRoute,
   LinksRoute: LinksRoute,
   LoginRoute: LoginRoute,
   SalesRoute: SalesRoute,
   CustomerNameRoute: CustomerNameRoute,
+  DealerNameRoute: DealerNameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
