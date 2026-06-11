@@ -13,6 +13,10 @@ import {
   Crown,
   UserPlus,
   X,
+  Scale,
+  ArrowDownLeft,
+  ArrowUpRight,
+  CheckCircle2,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -46,6 +50,13 @@ import {
   removeMember,
   revokeInvite,
   type LinkDTO,
+  listLedger,
+  addLedgerEntry,
+  updateLedgerEntry,
+  deleteLedgerEntry,
+  type LedgerEntryDTO,
+  type LedgerKind,
+  type MemberDTO,
 } from "@/lib/workspace.functions";
 
 export const Route = createFileRoute("/links")({
@@ -227,21 +238,33 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
           <Button variant="outline" size="sm" onClick={() => setMembersOpen(true)}>
             <Users className="mr-1.5 size-4" /> Members
           </Button>
-          {canEdit && (
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditing(null);
-                setLinkDialogOpen(true);
-              }}
-            >
-              <Plus className="mr-1.5 size-4" /> Add link
-            </Button>
-          )}
         </div>
       </div>
 
-      {data.links.length === 0 ? (
+      <Tabs defaultValue="links">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="links">
+            <Link2 className="mr-1.5 size-4" /> Links
+          </TabsTrigger>
+          <TabsTrigger value="ledger">
+            <Scale className="mr-1.5 size-4" /> Ledger
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="links" className="mt-4 space-y-3">
+          {canEdit && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditing(null);
+                  setLinkDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1.5 size-4" /> Add link
+              </Button>
+            </div>
+          )}
+          {data.links.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 bg-card p-10 text-center text-sm text-muted-foreground">
           <Link2 className="mx-auto mb-2 size-6 opacity-60" />
           No links yet. {canEdit && "Add one to get started."}
@@ -301,7 +324,16 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
             </div>
           ))}
         </div>
-      )}
+          )}
+        </TabsContent>
+        <TabsContent value="ledger" className="mt-4">
+          <LedgerPanel
+            workspaceId={workspaceId}
+            members={data.members}
+            canEdit={canEdit}
+          />
+        </TabsContent>
+      </Tabs>
 
       <LinkDialog
         open={linkDialogOpen}
@@ -547,6 +579,365 @@ function MembersDialog({
             ))}
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function formatRupees(cents: number) {
+  const v = Math.abs(cents) / 100;
+  return v.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+}
+
+function LedgerPanel({
+  workspaceId,
+  members,
+  canEdit,
+}: {
+  workspaceId: string;
+  members: MemberDTO[];
+  canEdit: boolean;
+}) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listLedger);
+  const addFn = useServerFn(addLedgerEntry);
+  const updFn = useServerFn(updateLedgerEntry);
+  const delFn = useServerFn(deleteLedgerEntry);
+
+  const queryKey = ["ledger", workspaceId] as const;
+  const { data, isLoading } = useQuery({
+    queryKey,
+    queryFn: () => listFn({ data: { workspaceId } }),
+  });
+
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<LedgerEntryDTO | null>(null);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey });
+
+  const saveMut = useMutation({
+    mutationFn: async (v: {
+      amountCents: number;
+      payerUserId: string;
+      kind: LedgerKind;
+      note: string;
+      entryDate: string;
+    }) => {
+      if (editing) {
+        return updFn({
+          data: {
+            id: editing.id,
+            amountCents: v.amountCents,
+            payerUserId: v.payerUserId,
+            kind: v.kind,
+            note: v.note || null,
+            entryDate: v.entryDate,
+          },
+        });
+      }
+      return addFn({
+        data: {
+          workspaceId,
+          amountCents: v.amountCents,
+          payerUserId: v.payerUserId,
+          kind: v.kind,
+          note: v.note || null,
+          entryDate: v.entryDate,
+        },
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      setOpen(false);
+      setEditing(null);
+      toast.success(editing ? "Entry updated" : "Entry added");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Deleted");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+  });
+
+  if (isLoading || !data) {
+    return (
+      <div className="rounded-2xl border border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
+        Loading ledger…
+      </div>
+    );
+  }
+
+  const viewerId = data.viewerUserId;
+  const other = members.find((m) => m.userId !== viewerId);
+  const otherLabel = other?.email?.split("@")[0] || "them";
+  const net = data.netCents;
+
+  const balanceLine =
+    net === 0
+      ? "All settled up"
+      : net > 0
+        ? `${otherLabel} owes you ₹${formatRupees(net)}`
+        : `You owe ${otherLabel} ₹${formatRupees(net)}`;
+
+  return (
+    <div className="space-y-4">
+      <div
+        className={`rounded-2xl border p-5 ${
+          net === 0
+            ? "border-border/70 bg-card"
+            : net > 0
+              ? "border-emerald-500/40 bg-emerald-500/5"
+              : "border-destructive/40 bg-destructive/5"
+        }`}
+      >
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">
+          Net balance
+        </div>
+        <div className="mt-1 font-display text-2xl font-semibold">{balanceLine}</div>
+      </div>
+
+      {canEdit && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-1.5 size-4" /> Add entry
+          </Button>
+        </div>
+      )}
+
+      {data.entries.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/70 bg-card p-10 text-center text-sm text-muted-foreground">
+          <Scale className="mx-auto mb-2 size-6 opacity-60" />
+          No entries yet. {canEdit && "Add the first one."}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {data.entries.map((e) => {
+            const youPaid = e.payerUserId === viewerId;
+            const payerName = youPaid
+              ? "You"
+              : (e.payerEmail?.split("@")[0] || "them");
+            const isSettle = e.kind === "settlement";
+            return (
+              <div
+                key={e.id}
+                className={`rounded-xl border p-3.5 transition ${
+                  isSettle
+                    ? "border-primary/30 bg-primary/5"
+                    : "border-border/70 bg-card hover:border-primary/40"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      {isSettle ? (
+                        <CheckCircle2 className="size-4 text-primary" />
+                      ) : youPaid ? (
+                        <ArrowUpRight className="size-4 text-emerald-500" />
+                      ) : (
+                        <ArrowDownLeft className="size-4 text-destructive" />
+                      )}
+                      <span className="font-medium">
+                        {payerName} paid ₹{formatRupees(e.amountCents)}
+                      </span>
+                      {isSettle && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Settlement
+                        </Badge>
+                      )}
+                    </div>
+                    {e.note && (
+                      <div className="mt-1.5 text-sm text-muted-foreground">{e.note}</div>
+                    )}
+                    <div className="mt-1.5 text-[11px] uppercase tracking-wider text-muted-foreground/70">
+                      {e.entryDate} · by {e.createdByEmail || "unknown"}
+                    </div>
+                  </div>
+                  {canEdit && (
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        onClick={() => {
+                          setEditing(e);
+                          setOpen(true);
+                        }}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-destructive"
+                        onClick={() => {
+                          if (confirm("Delete this entry?")) delMut.mutate(e.id);
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <LedgerEntryDialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setEditing(null);
+        }}
+        initial={editing}
+        viewerId={viewerId}
+        members={members}
+        saving={saveMut.isPending}
+        onSave={(v) => saveMut.mutate(v)}
+      />
+    </div>
+  );
+}
+
+function LedgerEntryDialog({
+  open,
+  onOpenChange,
+  initial,
+  viewerId,
+  members,
+  saving,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  initial: LedgerEntryDTO | null;
+  viewerId: string;
+  members: MemberDTO[];
+  saving: boolean;
+  onSave: (v: {
+    amountCents: number;
+    payerUserId: string;
+    kind: LedgerKind;
+    note: string;
+    entryDate: string;
+  }) => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [amount, setAmount] = useState("");
+  const [payerUserId, setPayerUserId] = useState(viewerId);
+  const [kind, setKind] = useState<LedgerKind>("entry");
+  const [note, setNote] = useState("");
+  const [entryDate, setEntryDate] = useState(today);
+
+  useMemo(() => {
+    if (open) {
+      setAmount(initial ? (initial.amountCents / 100).toString() : "");
+      setPayerUserId(initial?.payerUserId ?? viewerId);
+      setKind(initial?.kind ?? "entry");
+      setNote(initial?.note ?? "");
+      setEntryDate(initial?.entryDate ?? today);
+    }
+  }, [open, initial, viewerId, today]);
+
+  const amountCents = Math.round(parseFloat(amount || "0") * 100);
+  const valid = amountCents > 0 && !!payerUserId;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{initial ? "Edit entry" : "Add ledger entry"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Amount (₹)</Label>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Who paid?</Label>
+            <Select value={payerUserId} onValueChange={setPayerUserId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {members.map((m) => (
+                  <SelectItem key={m.userId} value={m.userId}>
+                    {m.userId === viewerId
+                      ? "You"
+                      : m.email || m.userId.slice(0, 8)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Type</Label>
+            <Select value={kind} onValueChange={(v) => setKind(v as LedgerKind)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entry">Entry (owe / claim)</SelectItem>
+                <SelectItem value="settlement">Settlement (cash handed over)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Date</Label>
+            <Input
+              type="date"
+              value={entryDate}
+              onChange={(e) => setEntryDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Note (optional)</Label>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              maxLength={500}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!valid || saving}
+            onClick={() =>
+              onSave({
+                amountCents,
+                payerUserId,
+                kind,
+                note: note.trim(),
+                entryDate,
+              })
+            }
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -106,6 +106,53 @@ export type Database = {
           },
         ]
       }
+      workspace_ledger_entries: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string
+          entry_date: string
+          id: string
+          kind: string
+          note: string | null
+          payer_user_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          created_by: string
+          entry_date?: string
+          id?: string
+          kind: string
+          note?: string | null
+          payer_user_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string
+          entry_date?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          payer_user_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_ledger_entries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_links: {
         Row: {
           created_at: string
