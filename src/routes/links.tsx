@@ -238,21 +238,33 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
           <Button variant="outline" size="sm" onClick={() => setMembersOpen(true)}>
             <Users className="mr-1.5 size-4" /> Members
           </Button>
-          {canEdit && (
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditing(null);
-                setLinkDialogOpen(true);
-              }}
-            >
-              <Plus className="mr-1.5 size-4" /> Add link
-            </Button>
-          )}
         </div>
       </div>
 
-      {data.links.length === 0 ? (
+      <Tabs defaultValue="links">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="links">
+            <Link2 className="mr-1.5 size-4" /> Links
+          </TabsTrigger>
+          <TabsTrigger value="ledger">
+            <Scale className="mr-1.5 size-4" /> Ledger
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="links" className="mt-4 space-y-3">
+          {canEdit && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditing(null);
+                  setLinkDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1.5 size-4" /> Add link
+              </Button>
+            </div>
+          )}
+          {data.links.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 bg-card p-10 text-center text-sm text-muted-foreground">
           <Link2 className="mx-auto mb-2 size-6 opacity-60" />
           No links yet. {canEdit && "Add one to get started."}
@@ -312,7 +324,16 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
             </div>
           ))}
         </div>
-      )}
+          )}
+        </TabsContent>
+        <TabsContent value="ledger" className="mt-4">
+          <LedgerPanel
+            workspaceId={workspaceId}
+            members={data.members}
+            canEdit={canEdit}
+          />
+        </TabsContent>
+      </Tabs>
 
       <LinkDialog
         open={linkDialogOpen}
