@@ -12,6 +12,7 @@ import {
   urgencyLevel,
   warrantyEnd,
   whatsAppUrl,
+  balanceDue,
   type Sale,
 } from "@/lib/sale-utils";
 
@@ -66,6 +67,7 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
             : s.paymentStatus === "partial"
               ? "Partial"
               : "Unpaid";
+        const due = balanceDue(s);
         return (
           <li
             key={s.id}
@@ -98,6 +100,11 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
                   >
                     {payLabel}
                   </span>
+                  {due > 0 && (
+                    <span className="shrink-0 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">
+                      {formatMoney(due)} due
+                    </span>
+                  )}
                 </div>
                 <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                   {s.customerName ? (

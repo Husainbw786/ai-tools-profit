@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { LayoutDashboard, Package, Archive, LogOut, TrendingUp, Link2 } from "lucide-react";
+import { LayoutDashboard, Package, Archive, LogOut, TrendingUp, Link2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/sales", label: "Active", icon: Package },
+  { to: "/collections", label: "Dues", icon: Wallet },
   { to: "/archive", label: "Archive", icon: Archive },
   { to: "/links", label: "Links", icon: Link2 },
 ] as const;
