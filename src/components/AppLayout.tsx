@@ -51,7 +51,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24 md:pb-0">
+    <div className="min-h-screen bg-background text-foreground pb-36 md:pb-0">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">
           <Link to="/" className="group flex items-center gap-2.5">
