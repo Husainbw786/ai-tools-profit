@@ -9,6 +9,9 @@ import {
   TrendingUp,
   Receipt,
   Wallet,
+  Target,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleDialog } from "@/components/SaleDialog";
@@ -16,6 +19,7 @@ import { SalesList } from "@/components/SalesList";
 import { ProfitTrendChart } from "@/components/ProfitTrendChart";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -27,6 +31,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/hooks/use-sales";
+import { useMonthlyGoal } from "@/hooks/use-goal";
 import {
   filterByRange,
   formatMoney,
@@ -80,6 +85,14 @@ function Index() {
   const unpaidAmount = sales
     .filter((s) => s.paymentStatus !== "paid")
     .reduce((a, s) => a + s.sellPrice, 0);
+
+  const { goal, setGoal } = useMonthlyGoal();
+  const now = new Date();
+  const thisMonthProfit = useMemo(() => {
+    const monthRange = { from: startOfMonth(now), to: endOfMonth(now) };
+    return filterByRange(sales, monthRange).reduce((a, s) => a + profit(s), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sales]);
 
   const activeSales = useMemo(
     () => {
