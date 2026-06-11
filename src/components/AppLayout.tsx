@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Package,
@@ -11,11 +11,19 @@ import {
   BarChart3,
   Users,
   Truck,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -28,10 +36,14 @@ const nav = [
   { to: "/links", label: "Links", icon: Link2 },
 ] as const;
 
+const mobilePrimary = nav.slice(0, 4);
+const mobileMore = nav.slice(4);
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { session, loading } = useAuth();
   const navigate = useNavigate();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
@@ -115,7 +127,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
         <div className="mx-auto max-w-md px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-1">
           <div className="flex items-center justify-around rounded-2xl border border-border/70 bg-card/95 px-2 py-2 shadow-[var(--shadow-elegant)] backdrop-blur-xl">
-            {nav.map((n) => {
+            {mobilePrimary.map((n) => {
               const active = pathname === n.to;
               const Icon = n.icon;
               return (
@@ -137,6 +149,59 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+            <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "relative flex flex-1 flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] font-medium transition-all",
+                    mobileMore.some((n) => n.to === pathname)
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground active:scale-95",
+                  )}
+                  style={
+                    mobileMore.some((n) => n.to === pathname)
+                      ? { backgroundImage: "var(--gradient-primary)" }
+                      : undefined
+                  }
+                >
+                  <MoreHorizontal className="size-5" />
+                  <span>More</span>
+                </button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-2xl">
+                <SheetHeader>
+                  <SheetTitle>More</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4 grid grid-cols-3 gap-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
+                  {mobileMore.map((n) => {
+                    const active = pathname === n.to;
+                    const Icon = n.icon;
+                    return (
+                      <Link
+                        key={n.to}
+                        to={n.to}
+                        onClick={() => setMoreOpen(false)}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 rounded-xl border border-border/60 p-4 text-xs font-medium transition-all",
+                          active
+                            ? "text-primary-foreground"
+                            : "bg-card text-foreground active:scale-95",
+                        )}
+                        style={
+                          active
+                            ? { backgroundImage: "var(--gradient-primary)" }
+                            : undefined
+                        }
+                      >
+                        <Icon className="size-5" />
+                        <span>{n.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </nav>
