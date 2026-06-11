@@ -15,45 +15,44 @@ import {
   type Sale,
 } from "@/lib/sale-utils";
 
-export const Route = createFileRoute("/customer/$name")({
+export const Route = createFileRoute("/dealer/$name")({
   head: ({ params }) => ({
     meta: [{ title: `${decodeURIComponent(params.name)} — ProfitAI` }],
   }),
-  component: CustomerPage,
+  component: DealerPage,
 });
 
-function CustomerPage() {
+function DealerPage() {
   const { name } = Route.useParams();
   const decoded = decodeURIComponent(name);
   const { data: sales = [] } = useSales();
   const [editing, setEditing] = useState<Sale | null>(null);
 
-  const customerSales = useMemo(
+  const dealerSales = useMemo(
     () =>
       sales.filter(
-        (s) => s.customerName.trim().toLowerCase() === decoded.trim().toLowerCase(),
+        (s) => s.buyerName.trim().toLowerCase() === decoded.trim().toLowerCase(),
       ),
     [sales, decoded],
   );
 
   const totals = useMemo(() => {
-    const revenue = customerSales.reduce((a, s) => a + s.sellPrice, 0);
-    const cost = customerSales.reduce((a, s) => a + s.buyPrice, 0);
-    const totalProfit = customerSales.reduce((a, s) => a + profit(s), 0);
+    const revenue = dealerSales.reduce((a, s) => a + s.sellPrice, 0);
+    const cost = dealerSales.reduce((a, s) => a + s.buyPrice, 0);
+    const totalProfit = dealerSales.reduce((a, s) => a + profit(s), 0);
     const avgMargin =
-      customerSales.length > 0
-        ? customerSales.reduce((a, s) => a + marginPct(s), 0) / customerSales.length
+      dealerSales.length > 0
+        ? dealerSales.reduce((a, s) => a + marginPct(s), 0) / dealerSales.length
         : 0;
-    const unpaid = customerSales.filter((s) => s.paymentStatus !== "paid").length;
-    return { revenue, cost, totalProfit, avgMargin, unpaid };
-  }, [customerSales]);
+    return { revenue, cost, totalProfit, avgMargin };
+  }, [dealerSales]);
 
-  const phone = customerSales.find((s) => s.customerNumber)?.customerNumber ?? "";
+  const phone = dealerSales.find((s) => s.dealerNumber)?.dealerNumber ?? "";
 
   return (
     <AppLayout>
       <Link
-        to="/sales"
+        to="/dealers"
         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" /> Back
@@ -61,15 +60,12 @@ function CustomerPage() {
 
       <div className="mt-3">
         <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          Customer
+          Dealer
         </div>
         <h1 className="font-display text-2xl font-bold tracking-tight">{decoded}</h1>
         {phone && (
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <a
-              href={`tel:${phone}`}
-              className="inline-flex items-center gap-1 hover:text-foreground"
-            >
+            <a href={`tel:${phone}`} className="inline-flex items-center gap-1 hover:text-foreground">
               <Phone className="size-3" /> {phone}
             </a>
             <a
@@ -87,23 +83,23 @@ function CustomerPage() {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Card className="border-border/70 bg-card p-3 shadow-[var(--shadow-soft)]">
           <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Orders
+            Sourced
           </div>
           <div className="mt-1 font-display text-lg font-semibold tracking-tight">
-            {customerSales.length}
+            {dealerSales.length}
           </div>
         </Card>
         <Card className="border-border/70 bg-card p-3 shadow-[var(--shadow-soft)]">
           <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Revenue
+            Cost paid
           </div>
           <div className="mt-1 font-display text-lg font-semibold tracking-tight">
-            {formatMoney(totals.revenue)}
+            {formatMoney(totals.cost)}
           </div>
         </Card>
         <Card className="border-border/70 bg-card p-3 shadow-[var(--shadow-soft)]">
           <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Total profit
+            Profit earned
           </div>
           <div className="mt-1 font-display text-lg font-semibold tracking-tight text-success">
             {formatMoney(totals.totalProfit)}
@@ -119,23 +115,17 @@ function CustomerPage() {
         </Card>
       </div>
 
-      {totals.unpaid > 0 && (
-        <div className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          {totals.unpaid} sale{totals.unpaid === 1 ? "" : "s"} pending payment
-        </div>
-      )}
-
       <div className="mt-4">
-        <ContactEditor kind="customer" name={decoded} />
+        <ContactEditor kind="dealer" name={decoded} />
       </div>
 
       <h2 className="mt-6 font-display text-lg font-semibold tracking-tight">
-        Purchase history
+        Sourced products
       </h2>
       <div className="mt-3">
         <SalesList
-          sales={customerSales}
-          emptyText="No sales for this customer."
+          sales={dealerSales}
+          emptyText="No sales sourced from this dealer."
           onRowClick={(s) => setEditing(s)}
         />
       </div>
