@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils";
 import { useCreateSale, useDeleteSale, useSales, useUpdateSale } from "@/hooks/use-sales";
 import { formatMoney, whatsAppUrl, type PaymentStatus, type Sale } from "@/lib/sale-utils";
 import { toast } from "sonner";
-import { MessageCircle } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -28,24 +27,37 @@ type Props = {
   sale?: Sale | null;
 };
 
-const empty = {
+type Item = {
+  productName: string;
+  durationMonths: number;
+  quantity: number;
+  buyPrice: number;
+  sellPrice: number;
+  hasWarranty: boolean;
+};
+
+const emptyItem = (): Item => ({
   productName: "",
   durationMonths: 1,
   quantity: 1,
-  buyerName: "",
-  customerName: "",
   buyPrice: 0,
   sellPrice: 0,
+  hasWarranty: true,
+});
+
+const emptyShared = () => ({
+  buyerName: "",
+  customerName: "",
   warrantyStart: new Date().toISOString(),
   notes: "",
   customerNumber: "",
   dealerNumber: "",
-  hasWarranty: true,
   paymentStatus: "paid" as PaymentStatus,
-};
+});
 
 export function SaleDialog({ open, onOpenChange, sale }: Props) {
-  const [form, setForm] = useState(empty);
+  const [shared, setShared] = useState(emptyShared());
+  const [items, setItems] = useState<Item[]>([emptyItem()]);
   const createMut = useCreateSale();
   const updateMut = useUpdateSale();
   const deleteMut = useDeleteSale();
@@ -60,55 +72,104 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
   const dealerNumOpts = uniq(allSales.map((s) => s.dealerNumber));
   const customerNumOpts = uniq(allSales.map((s) => s.customerNumber));
 
-  // Lookup latest sale matching a customer name to auto-fill number
   const findByCustomerName = (name: string) =>
-    allSales.find((s) => s.customerName.trim().toLowerCase() === name.trim().toLowerCase());
+    allSales.find(
+      (s) =>
+        s.customerName.trim().toLowerCase() === name.trim().toLowerCase() &&
+        (s.customerNumber ?? "").trim() !== "",
+    );
   const findByCustomerNumber = (num: string) =>
-    allSales.find((s) => (s.customerNumber ?? "").trim() === num.trim());
+    allSales.find(
+      (s) => (s.customerNumber ?? "").trim() === num.trim() && s.customerName.trim() !== "",
+    );
   const findByBuyerName = (name: string) =>
-    allSales.find((s) => s.buyerName.trim().toLowerCase() === name.trim().toLowerCase());
+    allSales.find(
+      (s) =>
+        s.buyerName.trim().toLowerCase() === name.trim().toLowerCase() &&
+        (s.dealerNumber ?? "").trim() !== "",
+    );
   const findByDealerNumber = (num: string) =>
-    allSales.find((s) => (s.dealerNumber ?? "").trim() === num.trim());
+    allSales.find(
+      (s) => (s.dealerNumber ?? "").trim() === num.trim() && s.buyerName.trim() !== "",
+    );
 
   useEffect(() => {
-    if (open) {
-      setForm(
-        sale
-          ? {
-              productName: sale.productName,
-              durationMonths: sale.durationMonths,
-              quantity: sale.quantity ?? 1,
-              buyerName: sale.buyerName,
-              customerName: sale.customerName,
-              buyPrice: sale.buyPrice,
-              sellPrice: sale.sellPrice,
-              warrantyStart: sale.warrantyStart,
-              notes: sale.notes ?? "",
-              customerNumber: sale.customerNumber ?? "",
-              dealerNumber: sale.dealerNumber ?? "",
-              hasWarranty: sale.hasWarranty,
-              paymentStatus: sale.paymentStatus,
-            }
-          : { ...empty, warrantyStart: new Date().toISOString() },
-      );
+    if (!open) return;
+    if (sale) {
+      setShared({
+        buyerName: sale.buyerName,
+        customerName: sale.customerName,
+        warrantyStart: sale.warrantyStart,
+        notes: sale.notes ?? "",
+        customerNumber: sale.customerNumber ?? "",
+        dealerNumber: sale.dealerNumber ?? "",
+        paymentStatus: sale.paymentStatus,
+      });
+      setItems([
+        {
+          productName: sale.productName,
+          durationMonths: sale.durationMonths,
+          quantity: sale.quantity ?? 1,
+          buyPrice: sale.buyPrice,
+          sellPrice: sale.sellPrice,
+          hasWarranty: sale.hasWarranty,
+        },
+      ]);
+    } else {
+      setShared(emptyShared());
+      setItems([emptyItem()]);
     }
   }, [open, sale]);
 
-  const profit = form.sellPrice - form.buyPrice;
+  const updateItem = (i: number, patch: Partial<Item>) =>
+    setItems((arr) => arr.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+  const removeItem = (i: number) =>
+    setItems((arr) => (arr.length <= 1 ? arr : arr.filter((_, idx) => idx !== i)));
+
+  const totalRevenue = items.reduce(
+    (s, it) => s + it.sellPrice * (it.quantity || 1),
+    0,
+  );
+  const totalProfit = items.reduce(
+    (s, it) => s + (it.sellPrice - it.buyPrice) * (it.quantity || 1),
+    0,
+  );
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.productName.trim()) {
-      toast.error("Product name is required");
+    if (items.some((it) => !it.productName.trim())) {
+      toast.error("Each product needs a name");
       return;
     }
     try {
       if (sale) {
-        await updateMut.mutateAsync({ id: sale.id, patch: form });
+        const it = items[0];
+        await updateMut.mutateAsync({
+          id: sale.id,
+          patch: {
+            ...shared,
+            productName: it.productName,
+            durationMonths: it.durationMonths,
+            quantity: it.quantity,
+            buyPrice: it.buyPrice,
+            sellPrice: it.sellPrice,
+            hasWarranty: it.hasWarranty,
+          },
+        });
         toast.success("Sale updated");
       } else {
-        await createMut.mutateAsync(form);
-        toast.success("Sale added");
+        for (const it of items) {
+          await createMut.mutateAsync({
+            ...shared,
+            productName: it.productName,
+            durationMonths: it.durationMonths,
+            quantity: it.quantity,
+            buyPrice: it.buyPrice,
+            sellPrice: it.sellPrice,
+            hasWarranty: it.hasWarranty,
+          });
+        }
+        toast.success(items.length > 1 ? `${items.length} sales added` : "Sale added");
       }
       onOpenChange(false);
     } catch (err) {
@@ -132,88 +193,156 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{sale ? "Edit sale" : "Add sale"}</DialogTitle>
-          <DialogDescription>Record a subscription you resold.</DialogDescription>
+          <DialogDescription>
+            {sale
+              ? "Update this sale."
+              : "Record one or more products sold to the same customer."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="product">Product</Label>
-            <Input
-              id="product"
-                list="opt-products"
-              placeholder="LinkedIn Premium Career"
-              value={form.productName}
-              onChange={(e) => setForm({ ...form, productName: e.target.value })}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="dur">Duration (months)</Label>
-              <Input
-                id="dur"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={form.durationMonths === 0 ? "" : String(form.durationMonths)}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, "");
-                  setForm({ ...form, durationMonths: v === "" ? 0 : Number(v) });
-                }}
-                onBlur={() => {
-                  if (!form.durationMonths || form.durationMonths < 1)
-                    setForm({ ...form, durationMonths: 1 });
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qty">Quantity</Label>
-              <Input
-                id="qty"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={form.quantity === 0 ? "" : String(form.quantity)}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, "");
-                  setForm({ ...form, quantity: v === "" ? 0 : Number(v) });
-                }}
-                onBlur={() => {
-                  if (!form.quantity || form.quantity < 1)
-                    setForm({ ...form, quantity: 1 });
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3">
-            <div className="space-y-1.5">
-              <Label>Warranty start</Label>
-              <Popover>
-                <PopoverTrigger asChild>
+          {items.map((it, idx) => (
+            <div key={idx} className="space-y-3 rounded-md border bg-muted/20 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Product {idx + 1}
+                </span>
+                {!sale && items.length > 1 && (
                   <Button
                     type="button"
-                    variant="outline"
-                    className={cn("w-full justify-start text-left font-normal")}
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-destructive"
+                    onClick={() => removeItem(idx)}
                   >
-                    <CalendarIcon className="mr-2 size-4" />
-                    {format(new Date(form.warrantyStart), "PP")}
+                    <Trash2 className="size-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={new Date(form.warrantyStart)}
-                    onSelect={(d) =>
-                      d && setForm({ ...form, warrantyStart: d.toISOString() })
-                    }
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Product</Label>
+                <Input
+                  list="opt-products"
+                  placeholder="LinkedIn Premium Career"
+                  value={it.productName}
+                  onChange={(e) => updateItem(idx, { productName: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Duration (months)</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={it.durationMonths === 0 ? "" : String(it.durationMonths)}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      updateItem(idx, { durationMonths: v === "" ? 0 : Number(v) });
+                    }}
+                    onBlur={() => {
+                      if (!it.durationMonths || it.durationMonths < 1)
+                        updateItem(idx, { durationMonths: 1 });
+                    }}
                   />
-                </PopoverContent>
-              </Popover>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Quantity</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={it.quantity === 0 ? "" : String(it.quantity)}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      updateItem(idx, { quantity: v === "" ? 0 : Number(v) });
+                    }}
+                    onBlur={() => {
+                      if (!it.quantity || it.quantity < 1) updateItem(idx, { quantity: 1 });
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Buy price</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={it.buyPrice === 0 ? "" : String(it.buyPrice)}
+                    placeholder="0"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      updateItem(idx, { buyPrice: v === "" ? 0 : Number(v) });
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sell price</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={it.sellPrice === 0 ? "" : String(it.sellPrice)}
+                    placeholder="0"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      updateItem(idx, { sellPrice: v === "" ? 0 : Number(v) });
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-md border bg-background px-3 py-2">
+                <Label className="cursor-pointer text-sm">Under warranty</Label>
+                <Switch
+                  checked={it.hasWarranty}
+                  onCheckedChange={(v) => updateItem(idx, { hasWarranty: v })}
+                />
+              </div>
             </div>
+          ))}
+
+          {!sale && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setItems((a) => [...a, emptyItem()])}
+            >
+              <Plus className="size-4" /> Add another product
+            </Button>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Warranty start</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn("w-full justify-start text-left font-normal")}
+                >
+                  <CalendarIcon className="mr-2 size-4" />
+                  {format(new Date(shared.warrantyStart), "PP")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={new Date(shared.warrantyStart)}
+                  onSelect={(d) =>
+                    d && setShared({ ...shared, warrantyStart: d.toISOString() })
+                  }
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -223,14 +352,14 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                 id="buyer"
                 list="opt-buyers"
                 placeholder="Where you bought from"
-                value={form.buyerName}
+                value={shared.buyerName}
                 onChange={(e) => {
                   const v = e.target.value;
                   const match = findByBuyerName(v);
-                  setForm((f) => ({
+                  setShared((f) => ({
                     ...f,
                     buyerName: v,
-                    dealerNumber: match && !f.dealerNumber ? match.dealerNumber ?? "" : f.dealerNumber,
+                    dealerNumber: match ? match.dealerNumber ?? f.dealerNumber : f.dealerNumber,
                   }));
                 }}
               />
@@ -241,14 +370,16 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                 id="customer"
                 list="opt-customers"
                 placeholder="Who you sold to"
-                value={form.customerName}
+                value={shared.customerName}
                 onChange={(e) => {
                   const v = e.target.value;
                   const match = findByCustomerName(v);
-                  setForm((f) => ({
+                  setShared((f) => ({
                     ...f,
                     customerName: v,
-                    customerNumber: match && !f.customerNumber ? match.customerNumber ?? "" : f.customerNumber,
+                    customerNumber: match
+                      ? match.customerNumber ?? f.customerNumber
+                      : f.customerNumber,
                   }));
                 }}
               />
@@ -257,78 +388,41 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="buy">Buy price</Label>
-              <Input
-                id="buy"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={form.buyPrice === 0 ? "" : String(form.buyPrice)}
-                placeholder="0"
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, "");
-                  setForm({ ...form, buyPrice: v === "" ? 0 : Number(v) });
-                }}
-                onBlur={() => {
-                  if (form.buyPrice < 0) setForm({ ...form, buyPrice: 0 });
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sell">Sell price</Label>
-              <Input
-                id="sell"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={form.sellPrice === 0 ? "" : String(form.sellPrice)}
-                placeholder="0"
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, "");
-                  setForm({ ...form, sellPrice: v === "" ? 0 : Number(v) });
-                }}
-                onBlur={() => {
-                  if (form.sellPrice < 0) setForm({ ...form, sellPrice: 0 });
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="dealerNum">Dealer number <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Label htmlFor="dealerNum">
+                Dealer number <span className="text-muted-foreground text-xs">(optional)</span>
+              </Label>
               <Input
                 id="dealerNum"
                 list="opt-dealer-nums"
                 placeholder="Buyer contact / ID"
-                value={form.dealerNumber}
+                value={shared.dealerNumber}
                 onChange={(e) => {
                   const v = e.target.value;
                   const match = findByDealerNumber(v);
-                  setForm((f) => ({
+                  setShared((f) => ({
                     ...f,
                     dealerNumber: v,
-                    buyerName: match && !f.buyerName ? match.buyerName : f.buyerName,
+                    buyerName: match ? match.buyerName : f.buyerName,
                   }));
                 }}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="custNum">Customer number <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Label htmlFor="custNum">
+                Customer number <span className="text-muted-foreground text-xs">(optional)</span>
+              </Label>
               <Input
                 id="custNum"
                 list="opt-customer-nums"
                 placeholder="Customer contact / ID"
-                value={form.customerNumber}
+                value={shared.customerNumber}
                 onChange={(e) => {
                   const v = e.target.value;
                   const match = findByCustomerNumber(v);
-                  setForm((f) => ({
+                  setShared((f) => ({
                     ...f,
                     customerNumber: v,
-                    customerName: match && !f.customerName ? match.customerName : f.customerName,
+                    customerName: match ? match.customerName : f.customerName,
                   }));
                 }}
               />
@@ -351,15 +445,21 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             {customerNumOpts.map((v) => <option key={v} value={v} />)}
           </datalist>
 
-          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Profit: </span>
-            <span
-              className={cn(
-                "font-semibold",
-                profit > 0 ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {formatMoney(profit)}
+          <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">
+              Total:{" "}
+              <span className="font-semibold text-foreground">{formatMoney(totalRevenue)}</span>
+            </span>
+            <span className="text-muted-foreground">
+              Profit:{" "}
+              <span
+                className={cn(
+                  "font-semibold",
+                  totalProfit > 0 ? "text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {formatMoney(totalProfit)}
+              </span>
             </span>
           </div>
 
@@ -367,7 +467,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             <Label>Payment status</Label>
             <div className="grid grid-cols-3 gap-1.5 rounded-md border bg-muted/30 p-1">
               {(["paid", "partial", "unpaid"] as PaymentStatus[]).map((s) => {
-                const active = form.paymentStatus === s;
+                const active = shared.paymentStatus === s;
                 const color =
                   s === "paid"
                     ? "bg-success text-white"
@@ -378,7 +478,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setForm({ ...form, paymentStatus: s })}
+                    onClick={() => setShared({ ...shared, paymentStatus: s })}
                     className={cn(
                       "rounded px-2 py-1.5 text-xs font-medium capitalize transition-colors",
                       active ? color : "text-muted-foreground hover:bg-muted",
@@ -391,29 +491,13 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-md border px-3 py-2">
-            <div>
-              <Label htmlFor="hasWarranty" className="cursor-pointer">
-                Under warranty
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Tag this product as covered by a warranty.
-              </p>
-            </div>
-            <Switch
-              id="hasWarranty"
-              checked={form.hasWarranty}
-              onCheckedChange={(v) => setForm({ ...form, hasWarranty: v })}
-            />
-          </div>
-
           <div className="space-y-1.5">
             <Label htmlFor="notes">Notes</Label>
             <Textarea
               id="notes"
               rows={2}
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              value={shared.notes}
+              onChange={(e) => setShared({ ...shared, notes: e.target.value })}
             />
           </div>
 
@@ -434,7 +518,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               </>
             )}
             <Button type="submit" disabled={busy}>
-              {sale ? "Save" : "Add sale"}
+              {sale ? "Save" : items.length > 1 ? `Add ${items.length} sales` : "Add sale"}
             </Button>
           </DialogFooter>
         </form>
