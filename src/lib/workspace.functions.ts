@@ -431,16 +431,15 @@ export const updateLedgerEntry = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {
-      amount_cents: data.amountCents,
-      payer_user_id: data.payerUserId,
-      kind: data.kind,
-      note: data.note ?? null,
-    };
-    if (data.entryDate) patch.entry_date = data.entryDate;
     const { error } = await context.supabase
       .from("workspace_ledger_entries")
-      .update(patch)
+      .update({
+        amount_cents: data.amountCents,
+        payer_user_id: data.payerUserId,
+        kind: data.kind,
+        note: data.note ?? null,
+        ...(data.entryDate ? { entry_date: data.entryDate } : {}),
+      })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
