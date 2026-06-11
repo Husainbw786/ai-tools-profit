@@ -17,6 +17,20 @@ export type LinkDTO = {
   createdAt: string;
 };
 
+export type LedgerKind = "entry" | "settlement";
+export type LedgerEntryDTO = {
+  id: string;
+  amountCents: number;
+  payerUserId: string;
+  payerEmail: string;
+  kind: LedgerKind;
+  note: string | null;
+  entryDate: string;
+  createdBy: string;
+  createdByEmail: string;
+  createdAt: string;
+};
+
 async function lookupEmails(userIds: string[]): Promise<Record<string, string>> {
   if (userIds.length === 0) return {};
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
