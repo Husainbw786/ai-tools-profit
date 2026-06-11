@@ -85,6 +85,11 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
                   <span className="truncate font-display text-[15px] font-semibold tracking-tight">
                     {s.productName}
                   </span>
+                  {s.quantity > 1 && (
+                    <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                      ×{s.quantity}
+                    </span>
+                  )}
                   <span
                     className={cn(
                       "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
