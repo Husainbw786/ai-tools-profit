@@ -1,0 +1,1 @@
+ALTER FUNCTION public.touch_updated_at() SECURITY INVOKER;
