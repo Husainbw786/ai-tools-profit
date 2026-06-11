@@ -31,6 +31,7 @@ type Props = {
 const empty = {
   productName: "",
   durationMonths: 1,
+  quantity: 1,
   buyerName: "",
   customerName: "",
   buyPrice: 0,
@@ -76,6 +77,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
           ? {
               productName: sale.productName,
               durationMonths: sale.durationMonths,
+              quantity: sale.quantity ?? 1,
               buyerName: sale.buyerName,
               customerName: sale.customerName,
               buyPrice: sale.buyPrice,

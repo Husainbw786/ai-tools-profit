@@ -6,6 +6,7 @@ export type Sale = {
   id: string;
   productName: string;
   durationMonths: number;
+  quantity: number;
   buyerName: string;
   customerName: string;
   buyPrice: number;
@@ -75,10 +76,12 @@ export function buildWhatsAppMessage(s: Sale): string {
       : s.paymentStatus === "partial"
         ? "🟠 Partial payment"
         : "🔴 Payment pending";
+  const qty = s.quantity && s.quantity > 1 ? s.quantity : null;
   const lines = [
-    `*${s.productName}*`,
+    `*${s.productName}*${qty ? ` × ${qty}` : ""}`,
     s.customerName ? `Customer: ${s.customerName}` : null,
     `Duration: ${s.durationMonths} month${s.durationMonths === 1 ? "" : "s"}`,
+    qty ? `Quantity: ${qty}` : null,
     s.hasWarranty
       ? `Warranty: ${fmtDate(new Date(s.warrantyStart))} → ${fmtDate(end)}`
       : `Start: ${fmtDate(new Date(s.warrantyStart))}`,
