@@ -6,6 +6,7 @@ import type { TablesUpdate } from "@/integrations/supabase/types";
 const SaleInput = z.object({
   productName: z.string().min(1).max(200),
   durationMonths: z.number().int().min(1).max(120),
+  quantity: z.number().int().min(1).max(10000).default(1),
   buyerName: z.string().max(200).default(""),
   customerName: z.string().max(200).default(""),
   buyPrice: z.number().min(0),
@@ -22,6 +23,7 @@ export type SaleDTO = {
   id: string;
   productName: string;
   durationMonths: number;
+  quantity: number;
   buyerName: string;
   customerName: string;
   buyPrice: number;
@@ -39,6 +41,7 @@ const toDTO = (row: any): SaleDTO => ({
   id: row.id,
   productName: row.product_name,
   durationMonths: row.duration_months,
+  quantity: row.quantity ?? 1,
   buyerName: row.buyer_name ?? "",
   customerName: row.customer_name ?? "",
   buyPrice: Number(row.buy_price),
@@ -75,6 +78,7 @@ export const createSale = createServerFn({ method: "POST" })
         user_id: userId,
         product_name: data.productName,
         duration_months: data.durationMonths,
+        quantity: data.quantity,
         buyer_name: data.buyerName,
         customer_name: data.customerName,
         buy_price: data.buyPrice,
@@ -106,6 +110,7 @@ export const updateSale = createServerFn({ method: "POST" })
     const payload: TablesUpdate<"sales"> = {};
     if (p.productName !== undefined) payload.product_name = p.productName;
     if (p.durationMonths !== undefined) payload.duration_months = p.durationMonths;
+    if (p.quantity !== undefined) (payload as any).quantity = p.quantity;
     if (p.buyerName !== undefined) payload.buyer_name = p.buyerName;
     if (p.customerName !== undefined) payload.customer_name = p.customerName;
     if (p.buyPrice !== undefined) payload.buy_price = p.buyPrice;

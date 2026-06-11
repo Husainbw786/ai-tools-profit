@@ -31,6 +31,7 @@ type Props = {
 const empty = {
   productName: "",
   durationMonths: 1,
+  quantity: 1,
   buyerName: "",
   customerName: "",
   buyPrice: 0,
@@ -76,6 +77,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
           ? {
               productName: sale.productName,
               durationMonths: sale.durationMonths,
+              quantity: sale.quantity ?? 1,
               buyerName: sale.buyerName,
               customerName: sale.customerName,
               buyPrice: sale.buyPrice,
@@ -164,6 +166,28 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                 }}
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="qty">Quantity</Label>
+              <Input
+                id="qty"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={form.quantity === 0 ? "" : String(form.quantity)}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  setForm({ ...form, quantity: v === "" ? 0 : Number(v) });
+                }}
+                onBlur={() => {
+                  if (!form.quantity || form.quantity < 1)
+                    setForm({ ...form, quantity: 1 });
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
             <div className="space-y-1.5">
               <Label>Warranty start</Label>
               <Popover>
