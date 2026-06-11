@@ -1,57 +1,46 @@
-## Goal
+## Add a Ledger tab inside each shared workspace
 
-Add a new **Links** page where each user has their own shared workspace. They can invite collaborators by email (viewer / editor / owner) to add and manage links together — completely isolated from sales/hisab data.
+Adds a simple "Ledger" feature to the existing Links workspace so you and an invited member (your brother) can track who owes whom. Each workspace has its own private ledger, and only members of that workspace can see/edit it — fully isolated from your sales/hisab data, just like Links already are.
 
-## What gets built
+### What you'll see in the UI
 
-### 1. New page: `/links`
-- Nav entry "Links" in `AppLayout` bottom tabs.
-- Two sections:
-  - **My Workspace** — the workspace owned by the current user. Lists links with title, URL, optional note, "added by" badge.
-  - **Shared with me** — workspaces other users have invited me to, each opens its own view.
-- Add / edit / delete link dialog (title, URL, note) — gated by role.
-- Members panel (visible to owner + admins): invite by email, list members with role chips, change role, remove member.
+Inside any workspace (My Space or a Shared space), a new **Tabs switcher** at the top:
+- **Links** (existing)
+- **Ledger** (new)
 
-### 2. Database (new tables — isolated from `sales`)
-- `workspaces` — one per owner (`owner_id` unique).
-- `workspace_members` — `(workspace_id, user_id, role)` where role is `owner | editor | viewer`. Owner row auto-created.
-- `workspace_invites` — pending invites by `email` (lowercased) + role, consumed on first login by that email.
-- `workspace_links` — `workspace_id`, `title`, `url`, `note`, `created_by`.
+The Ledger tab shows:
+- A big **net balance card** at the top — e.g. "Brother owes you ₹2,500" or "You owe Brother ₹800", auto-computed from all entries.
+- An **Add entry** button (editors/owners only) opening a dialog with:
+  - Amount (₹)
+  - Direction: **I paid / gave** vs **They paid / gave**
+  - Type: **Entry** (normal) or **Settlement** (cash handed over to clear balance) — settlement rows render with a distinct style and a "Settled" badge.
+  - Optional short note
+- A reverse-chronological list of entries showing: amount, direction arrow, who added it, date, note, and (for editors) edit/delete.
 
-### 3. Access rules (RLS)
-- All four tables: only members of a workspace can read it. Editors/owners can write links. Only owner can manage members & invites.
-- Sales table is **untouched** — brother literally cannot query it.
-- A `SECURITY DEFINER` helper `is_workspace_member(_ws uuid, _user uuid, _min_role)` to keep policies recursion-free.
-- Auto-create the user's own workspace + owner membership on first visit (via a server fn `ensureMyWorkspace`).
-- Auto-consume matching `workspace_invites` for the signed-in user's email on login (server fn `claimPendingInvites`, called from the `/links` loader).
+Viewers can see the ledger and balance but can't add/edit.
 
-### 4. Server functions (`src/lib/workspace.functions.ts`)
-- `getMyWorkspaceData` → owner workspace + links + members.
-- `getSharedWorkspaces` → list of workspaces I'm a member of (not owner).
-- `getWorkspaceDetail(id)` → links + members for a workspace I belong to.
-- `addLink / updateLink / deleteLink` (role-gated).
-- `inviteMember(email, role)` → upsert into `workspace_invites`, plus immediately add if that user already exists in `auth.users`.
-- `updateMemberRole / removeMember` (owner only).
-- `claimPendingInvites` (called for current user's email on `/links` load).
+### How the balance works
 
-All use `requireSupabaseAuth`. Admin email lookups for invite-consumption use `supabaseAdmin` inside the handler.
+Net = sum of (entries where you paid) − sum of (entries where they paid), shown from the perspective of whoever is viewing. Settlements are included in the math but visually separated. With only 2 members it's a single number; if a workspace ever has 3+ members, the balance falls back to "per-pair" against the workspace owner (rare for your use case — your brother workspace is just 2 people).
 
-### 5. UI components
-- `src/routes/links.tsx` — main page with tabs ("My space" / "Shared with me") and workspace detail view.
-- `src/components/LinkDialog.tsx` — add/edit link form.
-- `src/components/MembersPanel.tsx` — invite input, member list with role dropdown.
-- Reuse existing Navy Trust palette and Digital Tools typography.
+### Technical notes
 
-### 6. Files touched
-**New:** migration, `src/lib/workspace.functions.ts`, `src/routes/links.tsx`, `src/components/LinkDialog.tsx`, `src/components/MembersPanel.tsx`.
-**Edited:** `src/components/AppLayout.tsx` (add nav entry).
+- **New table** `workspace_ledger_entries`: `id`, `workspace_id` (FK), `created_by` (uid), `payer_user_id` (uid — who paid/gave money), `amount_cents` (int, validated >0), `kind` (`entry` | `settlement`), `note` (text, ≤500), `entry_date` (date), `created_at`, `updated_at`.
+- **RLS**, mirroring `workspace_links`:
+  - SELECT: workspace members (`is_workspace_member(ws, uid, 'viewer')`)
+  - INSERT/UPDATE/DELETE: editors+ (`is_workspace_member(ws, uid, 'editor')`), with `created_by = auth.uid()` check on insert.
+  - GRANT `SELECT, INSERT, UPDATE, DELETE` to `authenticated`; `ALL` to `service_role`.
+- **Server fns** in `src/lib/workspace.functions.ts` (reuse `requireSupabaseAuth` + role gating already in place):
+  - `listLedger({ workspaceId })` → entries + members + computed net for caller
+  - `addLedgerEntry({ workspaceId, amount, payerUserId, kind, note, entryDate })`
+  - `updateLedgerEntry`, `deleteLedgerEntry`
+  - Zod validation: amount 1–100,000,00 paise, note ≤500, kind enum, date ISO.
+- **Frontend**: extend `src/routes/links.tsx` `WorkspaceView` to wrap content in `<Tabs>` (Links | Ledger). New `LedgerPanel` component + `LedgerEntryDialog`. Reuses existing shadcn `Tabs`, `Dialog`, `Select`, `Input`.
+- No change to sales/hisab tables or routes — isolation preserved.
 
-## Out of scope
-- Notes / checklists / file uploads (links only, per your choice).
-- Email notifications for invites (works silently — invitee sees the workspace when they next open Links).
-- Sales/hisab data stays 100% private. No cross-table joins. No shared visibility.
+### Files
 
-## Notes
-- Brother just needs to log in with the email you invited; access is granted automatically on first `/links` visit.
-- Owner cannot be removed or demoted.
-- After approval, the database migration will run first, then the code is generated against the regenerated types.
+- New migration: `supabase/migrations/<ts>_workspace_ledger.sql`
+- Edit: `src/lib/workspace.functions.ts` (add ledger fns + DTOs)
+- Edit: `src/routes/links.tsx` (Tabs + LedgerPanel + LedgerEntryDialog)
+- Edit: `src/integrations/supabase/types.ts` auto-regenerates after migration
