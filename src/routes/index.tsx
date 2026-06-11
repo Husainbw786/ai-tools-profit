@@ -288,8 +288,6 @@ function Stat({
   );
 }
 
-function DateBtn({
-
 function GoalCard({
   goal,
   setGoal,
