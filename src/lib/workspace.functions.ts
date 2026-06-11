@@ -335,3 +335,125 @@ export const revokeInvite = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ============= Ledger =============
+
+const LedgerEntryInput = z.object({
+  workspaceId: z.string().uuid(),
+  amountCents: z.number().int().min(1).max(1_000_000_000),
+  payerUserId: z.string().uuid(),
+  kind: z.enum(["entry", "settlement"]),
+  note: z.string().max(500).optional().nullable(),
+  entryDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+
+export const listLedger = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ workspaceId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: entries, error } = await supabase
+      .from("workspace_ledger_entries")
+      .select("*")
+      .eq("workspace_id", data.workspaceId)
+      .order("entry_date", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const rows = entries ?? [];
+    const ids = Array.from(
+      new Set([
+        ...rows.map((r: any) => r.payer_user_id),
+        ...rows.map((r: any) => r.created_by),
+      ]),
+    );
+    const emailMap = await lookupEmails(ids);
+
+    // Net balance from caller's perspective: + means others owe caller, - means caller owes.
+    let net = 0;
+    for (const r of rows as any[]) {
+      if (r.payer_user_id === userId) net += r.amount_cents;
+      else net -= r.amount_cents;
+    }
+
+    return {
+      entries: rows.map((r: any) => ({
+        id: r.id,
+        amountCents: r.amount_cents,
+        payerUserId: r.payer_user_id,
+        payerEmail: emailMap[r.payer_user_id] ?? "",
+        kind: r.kind as LedgerKind,
+        note: r.note,
+        entryDate: r.entry_date,
+        createdBy: r.created_by,
+        createdByEmail: emailMap[r.created_by] ?? "",
+        createdAt: r.created_at,
+      })) as LedgerEntryDTO[],
+      netCents: net,
+      viewerUserId: userId,
+    };
+  });
+
+export const addLedgerEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => LedgerEntryInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("workspace_ledger_entries").insert({
+      workspace_id: data.workspaceId,
+      created_by: context.userId,
+      payer_user_id: data.payerUserId,
+      amount_cents: data.amountCents,
+      kind: data.kind,
+      note: data.note ?? null,
+      entry_date: data.entryDate ?? new Date().toISOString().slice(0, 10),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const updateLedgerEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        amountCents: z.number().int().min(1).max(1_000_000_000),
+        payerUserId: z.string().uuid(),
+        kind: z.enum(["entry", "settlement"]),
+        note: z.string().max(500).optional().nullable(),
+        entryDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const patch: Record<string, unknown> = {
+      amount_cents: data.amountCents,
+      payer_user_id: data.payerUserId,
+      kind: data.kind,
+      note: data.note ?? null,
+    };
+    if (data.entryDate) patch.entry_date = data.entryDate;
+    const { error } = await context.supabase
+      .from("workspace_ledger_entries")
+      .update(patch)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteLedgerEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("workspace_ledger_entries")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
