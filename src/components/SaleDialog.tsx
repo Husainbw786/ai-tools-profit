@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useCreateSale, useDeleteSale, useSales, useUpdateSale } from "@/hooks/use-sales";
 import { formatMoney, whatsAppUrl, type PaymentStatus, type Sale } from "@/lib/sale-utils";
+import { PaymentsSection } from "@/components/PaymentsSection";
 import { toast } from "sonner";
 
 type Props = {
@@ -489,7 +490,14 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                 );
               })}
             </div>
+            {sale && (
+              <p className="text-[10px] text-muted-foreground">
+                Auto-updated when you record payments below.
+              </p>
+            )}
           </div>
+
+          {sale && <PaymentsSection sale={sale} />}
 
           <div className="space-y-1.5">
             <Label htmlFor="notes">Notes</Label>

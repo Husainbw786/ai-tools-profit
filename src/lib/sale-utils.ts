@@ -17,10 +17,14 @@ export type Sale = {
   dealerNumber?: string | null;
   hasWarranty: boolean;
   paymentStatus: PaymentStatus;
+  amountPaid: number;
   createdAt: string;
 };
 
 export const profit = (s: Sale) => s.sellPrice - s.buyPrice;
+
+export const balanceDue = (s: Sale) =>
+  Math.max(0, s.sellPrice - (s.amountPaid ?? 0));
 
 export const marginPct = (s: Sale) =>
   s.buyPrice > 0 ? ((s.sellPrice - s.buyPrice) / s.buyPrice) * 100 : 0;
@@ -96,5 +100,31 @@ export function buildWhatsAppMessage(s: Sale): string {
 export function whatsAppUrl(s: Sale): string {
   const phone = (s.customerNumber ?? "").replace(/[^0-9]/g, "");
   const text = encodeURIComponent(buildWhatsAppMessage(s));
+  return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+}
+
+export function buildReminderMessage(s: Sale): string {
+  const due = balanceDue(s);
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const paid = s.amountPaid ?? 0;
+  const lines = [
+    `Hi${s.customerName ? ` ${s.customerName}` : ""},`,
+    "",
+    `This is a gentle reminder for the pending payment on:`,
+    `*${s.productName}*${s.quantity > 1 ? ` × ${s.quantity}` : ""}`,
+    `Sold on: ${fmtDate(new Date(s.warrantyStart))}`,
+    `Total: ${formatMoney(s.sellPrice)}`,
+    paid > 0 ? `Paid so far: ${formatMoney(paid)}` : null,
+    `*Balance due: ${formatMoney(due)}*`,
+    "",
+    "Please confirm once paid. Thank you!",
+  ].filter(Boolean);
+  return lines.join("\n");
+}
+
+export function reminderWhatsAppUrl(s: Sale): string {
+  const phone = (s.customerNumber ?? "").replace(/[^0-9]/g, "");
+  const text = encodeURIComponent(buildReminderMessage(s));
   return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
 }

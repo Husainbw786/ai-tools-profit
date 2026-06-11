@@ -28,7 +28,8 @@ export function useCreateSale() {
   const qc = useQueryClient();
   const fn = useServerFn(createSale);
   return useMutation({
-    mutationFn: (input: Omit<Sale, "id" | "createdAt">) => fn({ data: input }),
+    mutationFn: (input: Omit<Sale, "id" | "createdAt" | "amountPaid">) =>
+      fn({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SALES_KEY }),
   });
 }
@@ -37,7 +38,10 @@ export function useUpdateSale() {
   const qc = useQueryClient();
   const fn = useServerFn(updateSale);
   return useMutation({
-    mutationFn: (input: { id: string; patch: Partial<Omit<Sale, "id" | "createdAt">> }) =>
+    mutationFn: (input: {
+      id: string;
+      patch: Partial<Omit<Sale, "id" | "createdAt" | "amountPaid">>;
+    }) =>
       fn({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SALES_KEY }),
   });
