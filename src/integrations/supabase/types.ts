@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      sale_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: string | null
+          note: string | null
+          paid_at: string
+          sale_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          method?: string | null
+          note?: string | null
+          paid_at?: string
+          sale_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string | null
+          note?: string | null
+          paid_at?: string
+          sale_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_payments_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales: {
         Row: {
           buy_price: number
@@ -265,6 +309,10 @@ export type Database = {
           _ws: string
         }
         Returns: boolean
+      }
+      sync_sale_payment_status: {
+        Args: { _sale_id: string }
+        Returns: undefined
       }
     }
     Enums: {
