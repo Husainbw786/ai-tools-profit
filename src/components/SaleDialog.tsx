@@ -559,6 +559,44 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             )}
           </div>
 
+          {!sale && shared.paymentStatus !== "unpaid" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="received">Amount received now</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="received"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={amountReceived === 0 ? "" : String(amountReceived)}
+                  placeholder="0"
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "");
+                    setReceivedTouched(true);
+                    setAmountReceived(v === "" ? 0 : Number(v));
+                  }}
+                />
+                {totalRevenue > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setReceivedTouched(true);
+                      setAmountReceived(totalRevenue);
+                    }}
+                  >
+                    Full
+                  </Button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Recorded as a payment entry. Leave 0 if nothing received yet.
+              </p>
+            </div>
+          )}
+
           {sale && <PaymentsSection sale={sale} />}
 
           <div className="space-y-1.5">
