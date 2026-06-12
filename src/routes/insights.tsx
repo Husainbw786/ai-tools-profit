@@ -252,14 +252,14 @@ function SummaryCard({
   accent?: "success" | "destructive";
 }) {
   return (
-    <Card className="p-3">
-      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+    <Card className="border-border/70 p-4 shadow-[var(--shadow-card)]">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </div>
       <div
         className={cn(
-          "mt-1 truncate font-display text-lg font-semibold tracking-tight",
-          accent === "success" && "text-success",
+          "mt-1 truncate font-display text-xl font-bold tracking-tight",
+          accent === "success" && "text-primary",
           accent === "destructive" && "text-destructive",
         )}
       >
