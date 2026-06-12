@@ -3,15 +3,14 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import {
-  Plus,
   CalendarIcon,
   ArrowUpRight,
-  TrendingUp,
-  Receipt,
-  Wallet,
+  ArrowUp,
+  AlertCircle,
   Target,
   Pencil,
   Check,
+  ChevronRight,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleDialog } from "@/components/SaleDialog";
@@ -37,6 +36,7 @@ import {
   formatMoney,
   isExpired,
   profit,
+  balanceDue,
   type DateRange,
   type Sale,
 } from "@/lib/sale-utils";
@@ -60,7 +60,6 @@ function Index() {
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Sale | null>(null);
-  const [unpaidOnly, setUnpaidOnly] = useState(false);
 
   const range: DateRange | null = useMemo(() => {
     const now = new Date();
@@ -74,17 +73,14 @@ function Index() {
     return null;
   }, [period, customFrom, customTo]);
 
-  const inRange = useMemo(() => {
-    const base = filterByRange(sales, range);
-    return unpaidOnly ? base.filter((s) => s.paymentStatus !== "paid") : base;
-  }, [sales, range, unpaidOnly]);
+  const inRange = useMemo(() => filterByRange(sales, range), [sales, range]);
   const totalProfit = inRange.reduce((sum, s) => sum + profit(s), 0);
   const totalRevenue = inRange.reduce((sum, s) => sum + s.sellPrice, 0);
   const totalCost = inRange.reduce((sum, s) => sum + s.buyPrice, 0);
-  const unpaidCount = sales.filter((s) => s.paymentStatus !== "paid").length;
-  const unpaidAmount = sales
-    .filter((s) => s.paymentStatus !== "paid")
-    .reduce((a, s) => a + s.sellPrice, 0);
+  const unpaidSales = sales.filter((s) => s.paymentStatus !== "paid");
+  const partialCount = unpaidSales.filter((s) => s.paymentStatus === "partial").length;
+  const unpaidOnlyCount = unpaidSales.filter((s) => s.paymentStatus === "unpaid").length;
+  const dueAmount = unpaidSales.reduce((a, s) => a + balanceDue(s), 0);
 
   const { goal, setGoal } = useMonthlyGoal();
   const now = new Date();
@@ -95,12 +91,8 @@ function Index() {
   }, [sales]);
 
   const activeSales = useMemo(
-    () => {
-      const base = sales.filter((s: Sale) => !isExpired(s));
-      const filtered = unpaidOnly ? base.filter((s) => s.paymentStatus !== "paid") : base;
-      return filtered.slice(0, 5);
-    },
-    [sales, unpaidOnly],
+    () => sales.filter((s: Sale) => !isExpired(s)).slice(0, 5),
+    [sales],
   );
 
   const periodLabel = {
@@ -110,8 +102,22 @@ function Index() {
     custom: "Custom range",
   }[period];
 
+  const periodSelect = (
+    <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+      <SelectTrigger className="h-9 rounded-full border-border/70 bg-card px-3 text-xs font-semibold shadow-[var(--shadow-soft)]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="lifetime">Lifetime</SelectItem>
+        <SelectItem value="this-month">This month</SelectItem>
+        <SelectItem value="last-month">Last month</SelectItem>
+        <SelectItem value="custom">Custom range</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   return (
-    <AppLayout>
+    <AppLayout rightSlot={periodSelect}>
       <h1 className="sr-only">Dashboard</h1>
 
       <Card
@@ -120,92 +126,69 @@ function Index() {
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full opacity-25 blur-3xl"
-          style={{ background: "var(--primary-glow)" }}
+          className="pointer-events-none absolute -right-20 -top-16 size-72 rounded-full opacity-50 blur-3xl"
+          style={{ background: "var(--primary)" }}
         />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-            backgroundSize: "22px 22px",
-          }}
-        />
-        <div className="relative p-6 md:p-8">
+        <div className="relative p-6">
           <div className="flex items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wider backdrop-blur">
-              <TrendingUp className="size-3" />
-              Net profit · {periodLabel}
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--primary-glow)]">
+              <ArrowUp className="size-3" strokeWidth={3} />
+              Net profit
             </div>
-            <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-              <SelectTrigger className="h-8 w-[140px] border-white/20 bg-white/10 text-xs text-primary-foreground backdrop-blur hover:bg-white/15 focus:ring-white/30">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lifetime">Lifetime</SelectItem>
-                <SelectItem value="this-month">This month</SelectItem>
-                <SelectItem value="last-month">Last month</SelectItem>
-                <SelectItem value="custom">Custom range</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">
+              {periodLabel}
+            </div>
           </div>
-          <div className="mt-5 font-display text-[2.75rem] font-bold leading-none tracking-tight md:text-6xl">
-            {formatMoney(totalProfit)}
+          <div className="mt-4 flex items-baseline gap-1.5">
+            <span className="font-display text-3xl font-bold leading-none text-[color:var(--primary-glow)]">
+              ₹
+            </span>
+            <span className="font-display text-[2.75rem] font-bold leading-none tracking-tight md:text-5xl">
+              {new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(
+                totalProfit,
+              )}
+            </span>
           </div>
-          <div className="mt-2 text-xs text-white/70">
+          <div className="mt-3 text-xs text-white/70">
             From {inRange.length} sale{inRange.length === 1 ? "" : "s"} this period
           </div>
           {period === "custom" && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <DateBtn date={customFrom} onChange={setCustomFrom} label="From" />
               <DateBtn date={customTo} onChange={setCustomTo} label="To" />
             </div>
           )}
+          <div
+            aria-hidden
+            className="my-5 border-t border-dashed border-white/15"
+          />
+          <div className="grid grid-cols-3 gap-3">
+            <HeroStat label="Revenue" value={formatMoney(totalRevenue)} />
+            <HeroStat label="Cost" value={formatMoney(totalCost)} />
+            <HeroStat label="Sales" value={String(inRange.length)} />
+          </div>
         </div>
       </Card>
 
-      <div className="mt-4 grid grid-cols-3 gap-3">
-        <Stat
-          icon={<Receipt className="size-3.5" />}
-          label="Sales"
-          value={String(inRange.length)}
-        />
-        <Stat
-          icon={<ArrowUpRight className="size-3.5" />}
-          label="Revenue"
-          value={formatMoney(totalRevenue)}
-        />
-        <Stat
-          icon={<Wallet className="size-3.5" />}
-          label="Cost"
-          value={formatMoney(totalCost)}
-        />
-      </div>
-
-      {unpaidCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setUnpaidOnly((v) => !v)}
-          className={cn(
-            "mt-3 flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm transition-colors",
-            unpaidOnly
-              ? "border-destructive bg-destructive/10 text-destructive"
-              : "border-border/70 bg-card hover:border-destructive/40",
-          )}
+      {dueAmount > 0 && (
+        <Link
+          to="/collections"
+          className="mt-4 flex items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 transition hover:bg-destructive/10"
         >
-          <div>
-            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              Outstanding
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-destructive/15 text-destructive">
+            <AlertCircle className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-destructive">
+              {formatMoney(dueAmount)}{" "}
+              <span className="font-medium text-destructive/80">to collect</span>
             </div>
-            <div className="font-display text-base font-semibold tracking-tight">
-              {unpaidCount} unpaid · {formatMoney(unpaidAmount)}
+            <div className="text-[11px] text-destructive/70">
+              {unpaidOnlyCount} unpaid · {partialCount} partial
             </div>
           </div>
-          <span className="text-xs font-medium">
-            {unpaidOnly ? "Showing all unpaid" : "Tap to filter"}
-          </span>
-        </button>
+          <ChevronRight className="size-4 text-destructive/70" />
+        </Link>
       )}
 
       <div className="mt-4">
@@ -218,25 +201,19 @@ function Index() {
         thisMonthProfit={thisMonthProfit}
       />
 
-      <div className="mt-8 flex items-end justify-between">
+      <div className="mt-7 flex items-end justify-between">
         <div>
-          <h2 className="font-display text-lg font-semibold tracking-tight">
+          <h2 className="font-display text-xl font-bold tracking-tight">
             Recent active
           </h2>
-          <p className="text-xs text-muted-foreground">
-            Latest subscriptions still under warranty
-          </p>
+          <p className="text-xs text-muted-foreground">Still under warranty</p>
         </div>
-        <Button
-          size="sm"
-          className="rounded-full shadow-[var(--shadow-soft)]"
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
+        <Link
+          to="/sales"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
         >
-          <Plus className="size-4" /> Add
-        </Button>
+          See all <ArrowUpRight className="size-3" />
+        </Link>
       </div>
       <div className="mt-4">
         <SalesList
@@ -247,16 +224,6 @@ function Index() {
             setDialogOpen(true);
           }}
         />
-        {activeSales.length > 0 && (
-          <div className="mt-4 text-center">
-            <Link
-              to="/sales"
-              className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
-            >
-              View all active <ArrowUpRight className="size-3" />
-            </Link>
-          </div>
-        )}
       </div>
 
       <SaleDialog open={dialogOpen} onOpenChange={setDialogOpen} sale={editing} />
@@ -264,24 +231,13 @@ function Index() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ReactNode;
-}) {
+function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-card p-3 shadow-[var(--shadow-soft)]">
-      <div className="flex items-center gap-1.5 text-muted-foreground">
-        {icon}
-        <span className="text-[10px] font-medium uppercase tracking-wider">
-          {label}
-        </span>
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">
+        {label}
       </div>
-      <div className="mt-1 truncate font-display text-base font-semibold tracking-tight">
+      <div className="mt-1 truncate font-display text-base font-bold tracking-tight">
         {value}
       </div>
     </div>
