@@ -210,24 +210,22 @@ function InsightsPage() {
         )}
       </Card>
 
-      <Card className="mt-6 p-4">
+      <h2 className="mt-6 font-display text-xl font-bold tracking-tight">
+        Profit breakdown
+      </h2>
+      <Card className="mt-3 border-border/70 p-4 shadow-[var(--shadow-card)]">
         <Tabs defaultValue="product">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-base font-semibold tracking-tight">
-              Profit breakdown
-            </h2>
-            <TabsList className="h-8">
-              <TabsTrigger value="product" className="text-xs">
-                <Package className="mr-1 size-3" /> Product
-              </TabsTrigger>
-              <TabsTrigger value="customer" className="text-xs">
-                <Users className="mr-1 size-3" /> Customer
-              </TabsTrigger>
-              <TabsTrigger value="buyer" className="text-xs">
-                <Store className="mr-1 size-3" /> Dealer
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="mb-3 grid h-10 w-full grid-cols-3 rounded-full bg-secondary/70 p-1">
+            <TabsTrigger value="product" className="rounded-full text-xs">
+              <Package className="mr-1 size-3" /> Product
+            </TabsTrigger>
+            <TabsTrigger value="customer" className="rounded-full text-xs">
+              <Users className="mr-1 size-3" /> Customer
+            </TabsTrigger>
+            <TabsTrigger value="buyer" className="rounded-full text-xs">
+              <Store className="mr-1 size-3" /> Dealer
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="product">
             <GroupSections groups={byProduct} />
