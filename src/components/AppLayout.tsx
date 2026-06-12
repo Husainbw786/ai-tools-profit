@@ -196,7 +196,11 @@ function NavTab({
   item,
   active,
 }: {
-  item: { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
+  item: {
+    to: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  };
   active: boolean;
 }) {
   const Icon = item.icon;
