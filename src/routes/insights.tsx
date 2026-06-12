@@ -143,16 +143,16 @@ function InsightsPage() {
         />
       </div>
 
-      <Card className="mt-6 p-4">
+      <Card className="mt-5 border-border/70 p-4 shadow-[var(--shadow-card)]">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="font-display text-base font-semibold tracking-tight">
+          <h2 className="font-display text-base font-bold tracking-tight">
             Monthly P&amp;L
           </h2>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={exportCSV} disabled={!pnl.length}>
+            <Button size="sm" variant="outline" onClick={exportCSV} disabled={!pnl.length} className="h-8 rounded-full border-border/70 bg-secondary/70 px-3 text-xs font-semibold">
               <Download className="size-3.5" /> CSV
             </Button>
-            <Button size="sm" variant="outline" onClick={exportPDF} disabled={!pnl.length}>
+            <Button size="sm" variant="outline" onClick={exportPDF} disabled={!pnl.length} className="h-8 rounded-full border-border/70 bg-secondary/70 px-3 text-xs font-semibold">
               <FileText className="size-3.5" /> PDF
             </Button>
           </div>
