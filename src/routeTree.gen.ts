@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SalesRouteImport } from './routes/sales'
+import { Route as MoreRouteImport } from './routes/more'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InsightsRouteImport } from './routes/insights'
@@ -24,6 +25,11 @@ import { Route as CustomerNameRouteImport } from './routes/customer.$name'
 const SalesRoute = SalesRouteImport.update({
   id: '/sales',
   path: '/sales',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoreRoute = MoreRouteImport.update({
+  id: '/more',
+  path: '/more',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/insights': typeof InsightsRoute
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
   '/dealer/$name': typeof DealerNameRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/insights': typeof InsightsRoute
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
   '/dealer/$name': typeof DealerNameRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/insights': typeof InsightsRoute
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/sales': typeof SalesRoute
   '/customer/$name': typeof CustomerNameRoute
   '/dealer/$name': typeof DealerNameRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/insights'
     | '/links'
     | '/login'
+    | '/more'
     | '/sales'
     | '/customer/$name'
     | '/dealer/$name'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/insights'
     | '/links'
     | '/login'
+    | '/more'
     | '/sales'
     | '/customer/$name'
     | '/dealer/$name'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/insights'
     | '/links'
     | '/login'
+    | '/more'
     | '/sales'
     | '/customer/$name'
     | '/dealer/$name'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   InsightsRoute: typeof InsightsRoute
   LinksRoute: typeof LinksRoute
   LoginRoute: typeof LoginRoute
+  MoreRoute: typeof MoreRoute
   SalesRoute: typeof SalesRoute
   CustomerNameRoute: typeof CustomerNameRoute
   DealerNameRoute: typeof DealerNameRoute
@@ -180,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/sales'
       fullPath: '/sales'
       preLoaderRoute: typeof SalesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/more': {
+      id: '/more'
+      path: '/more'
+      fullPath: '/more'
+      preLoaderRoute: typeof MoreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -264,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   InsightsRoute: InsightsRoute,
   LinksRoute: LinksRoute,
   LoginRoute: LoginRoute,
+  MoreRoute: MoreRoute,
   SalesRoute: SalesRoute,
   CustomerNameRoute: CustomerNameRoute,
   DealerNameRoute: DealerNameRoute,
@@ -271,3 +292,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
