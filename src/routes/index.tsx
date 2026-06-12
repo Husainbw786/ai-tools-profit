@@ -306,10 +306,13 @@ function GoalCard({
   }
 
   return (
-    <Card className="mt-4 p-4">
+    <Card className="mt-4 border-border/70 p-4 shadow-[var(--shadow-card)]">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          <Target className="size-3.5" /> Monthly goal
+          <span className="grid size-6 place-items-center rounded-full bg-primary/15 text-primary">
+            <Target className="size-3.5" />
+          </span>
+          Monthly goal
         </div>
         <button
           type="button"
@@ -320,11 +323,11 @@ function GoalCard({
           <Pencil className="size-3.5" />
         </button>
       </div>
-      <div className="mt-1 flex items-baseline justify-between">
-        <span className={cn("font-display text-xl font-bold tracking-tight", reached && "text-success")}>
+      <div className="mt-2 text-xs font-semibold text-muted-foreground">
+        <span className="font-display text-base text-foreground">
           {formatMoney(thisMonthProfit)}
-        </span>
-        <span className="text-xs text-muted-foreground">of {formatMoney(goal)}</span>
+        </span>{" "}
+        / {formatMoney(goal)}
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
         <div
@@ -335,8 +338,10 @@ function GoalCard({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="mt-1.5 text-[10px] text-muted-foreground">
-        {reached ? "Goal reached 🎉" : `${pct.toFixed(0)}% of monthly target`}
+      <div className="mt-2 text-[11px] text-muted-foreground">
+        {reached
+          ? "Goal reached 🎉"
+          : `${pct.toFixed(0)}% there — ${formatMoney(Math.max(0, goal - thisMonthProfit))} to go in ${format(now, "MMMM")}`}
       </div>
     </Card>
   );
