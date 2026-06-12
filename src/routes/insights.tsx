@@ -105,17 +105,17 @@ function InsightsPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
+          <h1 className="font-display text-3xl font-bold tracking-tight">
             Insights
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Profit breakdowns & monthly reports
+            Profit breakdown &amp; reports
           </p>
         </div>
         <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="h-9 w-[160px]">
+          <SelectTrigger className="h-9 w-auto min-w-[120px] rounded-full border-border/70 bg-card px-3 text-xs font-semibold shadow-[var(--shadow-soft)]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -128,7 +128,7 @@ function InsightsPage() {
         </Select>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         <SummaryCard label="Revenue" value={formatMoney(totals.revenue)} />
         <SummaryCard label="Cost" value={formatMoney(totals.cost)} />
         <SummaryCard
