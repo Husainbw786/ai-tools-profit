@@ -28,6 +28,8 @@ import {
 } from "@/lib/sale-utils";
 import { PaymentsSection } from "@/components/PaymentsSection";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { createPayment } from "@/lib/payments.functions";
 
 type Props = {
   open: boolean;
@@ -67,10 +69,13 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
   const [shared, setShared] = useState(emptyShared());
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [mode, setMode] = useState<"view" | "edit">("view");
+  const [amountReceived, setAmountReceived] = useState<number>(0);
+  const [receivedTouched, setReceivedTouched] = useState(false);
   const createMut = useCreateSale();
   const updateMut = useUpdateSale();
   const deleteMut = useDeleteSale();
   const { data: allSales = [] } = useSales();
+  const createPay = useServerFn(createPayment);
   const busy = createMut.isPending || updateMut.isPending || deleteMut.isPending;
 
   const uniq = (arr: (string | null | undefined)[]) =>
@@ -129,6 +134,8 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
       setMode("edit");
       setShared(emptyShared());
       setItems([emptyItem()]);
+      setAmountReceived(0);
+      setReceivedTouched(false);
     }
   }, [open, sale]);
 
@@ -145,6 +152,16 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
     (s, it) => s + (it.sellPrice - it.buyPrice) * (it.quantity || 1),
     0,
   );
+
+  // Auto-sync received amount with status / total when user hasn't manually edited it
+  useEffect(() => {
+    if (sale) return;
+    if (receivedTouched && shared.paymentStatus === "partial") return;
+    if (shared.paymentStatus === "paid") setAmountReceived(totalRevenue);
+    else if (shared.paymentStatus === "unpaid") setAmountReceived(0);
+    else if (shared.paymentStatus === "partial" && !receivedTouched)
+      setAmountReceived(0);
+  }, [shared.paymentStatus, totalRevenue, sale, receivedTouched]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,8 +186,9 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
         });
         toast.success("Sale updated");
       } else {
+        const created = [] as { id: string; sellPrice: number }[];
         for (const it of items) {
-          await createMut.mutateAsync({
+          const row = await createMut.mutateAsync({
             ...shared,
             productName: it.productName,
             durationMonths: it.durationMonths,
@@ -179,6 +197,29 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             sellPrice: it.sellPrice,
             hasWarranty: it.hasWarranty,
           });
+          if (row?.id) created.push({ id: row.id, sellPrice: it.sellPrice * (it.quantity || 1) });
+        }
+        // Record initial payment if any was received
+        if (amountReceived > 0 && created.length > 0 && totalRevenue > 0) {
+          let remaining = Math.min(amountReceived, totalRevenue);
+          for (let i = 0; i < created.length; i++) {
+            const c = created[i];
+            const portion = i === created.length - 1
+              ? remaining
+              : Math.min(remaining, c.sellPrice);
+            if (portion > 0) {
+              await createPay({
+                data: {
+                  saleId: c.id,
+                  amount: portion,
+                  paidAt: new Date().toISOString(),
+                  method: null,
+                  note: null,
+                },
+              });
+              remaining -= portion;
+            }
+          }
         }
         toast.success(items.length > 1 ? `${items.length} sales added` : "Sale added");
       }
@@ -517,6 +558,44 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
               </p>
             )}
           </div>
+
+          {!sale && shared.paymentStatus !== "unpaid" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="received">Amount received now</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="received"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={amountReceived === 0 ? "" : String(amountReceived)}
+                  placeholder="0"
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "");
+                    setReceivedTouched(true);
+                    setAmountReceived(v === "" ? 0 : Number(v));
+                  }}
+                />
+                {totalRevenue > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setReceivedTouched(true);
+                      setAmountReceived(totalRevenue);
+                    }}
+                  >
+                    Full
+                  </Button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Recorded as a payment entry. Leave 0 if nothing received yet.
+              </p>
+            </div>
+          )}
 
           {sale && <PaymentsSection sale={sale} />}
 
