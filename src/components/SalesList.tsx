@@ -1,6 +1,4 @@
-import { format } from "date-fns";
-import { ChevronRight, Clock, MessageCircle } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   daysRemaining,
@@ -9,9 +7,7 @@ import {
   isExpired,
   marginPct,
   profit,
-  urgencyLevel,
   warrantyEnd,
-  whatsAppUrl,
   balanceDue,
   type Sale,
 } from "@/lib/sale-utils";
@@ -22,6 +18,32 @@ type Props = {
   emptyText?: string;
 };
 
+const AVATAR_TINTS = [
+  "bg-primary/15 text-primary",
+  "bg-warning/20 text-warning-foreground",
+  "bg-destructive/15 text-destructive",
+  "bg-success/15 text-success",
+  "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  "bg-amber-500/20 text-amber-800 dark:text-amber-300",
+];
+
+function initials(name: string) {
+  const parts = name
+    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .trim()
+    .split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return "—";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function hashTint(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length];
+}
+
 export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Props) {
   if (sales.length === 0) {
     return (
@@ -31,159 +53,120 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
     );
   }
   return (
-    <ul className="space-y-2.5">
+    <ul className="space-y-3">
       {sales.map((s) => {
         const expired = isExpired(s);
         const end = warrantyEnd(s);
         const days = daysRemaining(s);
-        const level = urgencyLevel(s);
         const p = profit(s);
         const m = marginPct(s);
-        const barColor =
-          level === "expired"
-            ? "bg-muted"
-            : level === "urgent"
-              ? "bg-destructive"
-              : level === "warning"
-                ? "bg-warning"
-                : "bg-success";
-        const chipColor =
-          level === "expired"
-            ? "bg-muted text-muted-foreground"
-            : level === "urgent"
-              ? "bg-destructive/10 text-destructive"
-              : level === "warning"
-                ? "bg-warning/15 text-warning-foreground"
-                : "bg-success/10 text-success";
         const payColor =
           s.paymentStatus === "paid"
-            ? "bg-success/10 text-success"
+            ? "bg-success/15 text-success"
             : s.paymentStatus === "partial"
-              ? "bg-warning/15 text-warning-foreground"
-              : "bg-destructive/10 text-destructive";
+              ? "bg-warning/20 text-warning-foreground"
+              : "bg-destructive/15 text-destructive";
         const payLabel =
           s.paymentStatus === "paid"
-            ? "Paid"
+            ? "PAID"
             : s.paymentStatus === "partial"
-              ? "Partial"
-              : "Unpaid";
+              ? "PARTIAL"
+              : "UNPAID";
         const due = balanceDue(s);
+        const tint = hashTint(s.productName);
+        const titleBase = s.productName.split(/[\s—-]+/)[0] || s.productName;
+        const titleTail = s.productName.slice(titleBase.length).trim();
         return (
           <li
             key={s.id}
             onClick={() => onRowClick?.(s)}
             className={cn(
-              "group relative cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[var(--shadow-elegant)] active:translate-y-0",
+              "group relative cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)] transition-all hover:border-primary/30 hover:shadow-[var(--shadow-elegant)]",
               expired && "opacity-65",
             )}
           >
-            <div
-              aria-hidden
-              className={cn("absolute left-0 top-0 h-full w-1", barColor)}
-            />
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span
+                className={cn(
+                  "grid size-12 shrink-0 place-items-center rounded-2xl font-display text-sm font-bold tracking-tight",
+                  tint,
+                )}
+              >
+                {initials(s.productName)}
+              </span>
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="truncate font-display text-[15px] font-semibold tracking-tight">
-                    {s.productName}
+                <div className="flex items-baseline gap-1.5">
+                  <span className="truncate font-display text-[15px] font-bold tracking-tight">
+                    {titleBase}
                   </span>
+                  {titleTail && (
+                    <span className="truncate text-[13px] text-muted-foreground">
+                      {titleTail}
+                    </span>
+                  )}
                   {s.quantity > 1 && (
                     <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                       ×{s.quantity}
                     </span>
                   )}
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
-                      payColor,
-                    )}
-                  >
-                    {payLabel}
-                  </span>
-                  {due > 0 && (
-                    <span className="shrink-0 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">
-                      {formatMoney(due)} due
-                    </span>
-                  )}
                 </div>
-                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {s.customerName ? (
-                    <Link
-                      to="/customer/$name"
-                      params={{ name: s.customerName }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="truncate hover:text-accent hover:underline"
-                    >
-                      {s.customerName}
-                    </Link>
-                  ) : (
-                    <span className="truncate">—</span>
-                  )}
-                  <span className="text-border">•</span>
-                  <span className="shrink-0">{s.durationMonths}mo</span>
-                  {s.hasWarranty && (
-                    <span className="ml-1 shrink-0 rounded-full bg-accent/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent">
-                      Warr
-                    </span>
-                  )}
+                <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
+                  {s.customerName || "—"} · {s.durationMonths}mo
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="text-right">
+              <div className="text-right">
+                <div
+                  className={cn(
+                    "font-display text-[15px] font-bold tracking-tight",
+                    p >= 0 ? "text-primary" : "text-destructive",
+                  )}
+                >
+                  {formatMoney(s.sellPrice)}
+                </div>
+                {s.buyPrice > 0 ? (
                   <div
                     className={cn(
-                      "font-display text-base font-bold tracking-tight",
-                      p > 0 ? "text-foreground" : "text-muted-foreground",
+                      "text-[10px] font-bold",
+                      m >= 0 ? "text-success" : "text-destructive",
                     )}
                   >
-                    {formatMoney(p)}
+                    {formatPct(m)}
                   </div>
-                  {s.buyPrice > 0 ? (
-                    <div
-                      className={cn(
-                        "text-[10px] font-semibold",
-                        m >= 0 ? "text-success" : "text-destructive",
-                      )}
-                    >
-                      {formatPct(m)} margin
-                    </div>
-                  ) : (
-                    <div className="text-[10px] text-muted-foreground">
-                      sold {formatMoney(s.sellPrice)}
-                    </div>
-                  )}
-                </div>
-                <ChevronRight className="size-4 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                ) : (
+                  <div className="text-[10px] text-muted-foreground">·</div>
+                )}
               </div>
             </div>
-            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5 text-[11px]">
-              <span className="text-muted-foreground">
-                {format(new Date(s.warrantyStart), "MMM d")} →{" "}
-                {format(end, "MMM d, yyyy")}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={whatsAppUrl(s)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label="Share on WhatsApp"
-                  className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 font-medium text-success hover:bg-success/20"
-                >
-                  <MessageCircle className="size-3" />
-                  WA
-                </a>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-dashed border-border/70 pt-2.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium",
-                    chipColor,
+                    "rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide",
+                    payColor,
                   )}
                 >
-                  <Clock className="size-3" />
-                  {expired ? `Expired ${format(end, "MMM d")}` : `${days}d left`}
+                  {payLabel}
                 </span>
+                {due > 0 && (
+                  <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+                    {formatMoney(due)} DUE
+                  </span>
+                )}
               </div>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full bg-secondary/70 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground",
+                  expired && "bg-muted text-muted-foreground",
+                )}
+              >
+                <Clock className="size-3" />
+                {expired
+                  ? `Expired`
+                  : `${days} D LEFT`}
+              </span>
             </div>
+            {/* keep warrantyEnd ref to avoid unused */}
+            <span className="sr-only">{end.toISOString()}</span>
           </li>
         );
       })}
