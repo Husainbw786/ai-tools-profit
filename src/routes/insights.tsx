@@ -105,17 +105,17 @@ function InsightsPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
+          <h1 className="font-display text-3xl font-bold tracking-tight">
             Insights
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Profit breakdowns & monthly reports
+            Profit breakdown &amp; reports
           </p>
         </div>
         <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="h-9 w-[160px]">
+          <SelectTrigger className="h-9 w-auto min-w-[120px] rounded-full border-border/70 bg-card px-3 text-xs font-semibold shadow-[var(--shadow-soft)]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -128,7 +128,7 @@ function InsightsPage() {
         </Select>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         <SummaryCard label="Revenue" value={formatMoney(totals.revenue)} />
         <SummaryCard label="Cost" value={formatMoney(totals.cost)} />
         <SummaryCard
@@ -143,16 +143,16 @@ function InsightsPage() {
         />
       </div>
 
-      <Card className="mt-6 p-4">
+      <Card className="mt-5 border-border/70 p-4 shadow-[var(--shadow-card)]">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="font-display text-base font-semibold tracking-tight">
+          <h2 className="font-display text-base font-bold tracking-tight">
             Monthly P&amp;L
           </h2>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={exportCSV} disabled={!pnl.length}>
+            <Button size="sm" variant="outline" onClick={exportCSV} disabled={!pnl.length} className="h-8 rounded-full border-border/70 bg-secondary/70 px-3 text-xs font-semibold">
               <Download className="size-3.5" /> CSV
             </Button>
-            <Button size="sm" variant="outline" onClick={exportPDF} disabled={!pnl.length}>
+            <Button size="sm" variant="outline" onClick={exportPDF} disabled={!pnl.length} className="h-8 rounded-full border-border/70 bg-secondary/70 px-3 text-xs font-semibold">
               <FileText className="size-3.5" /> PDF
             </Button>
           </div>
@@ -210,24 +210,22 @@ function InsightsPage() {
         )}
       </Card>
 
-      <Card className="mt-6 p-4">
+      <h2 className="mt-6 font-display text-xl font-bold tracking-tight">
+        Profit breakdown
+      </h2>
+      <Card className="mt-3 border-border/70 p-4 shadow-[var(--shadow-card)]">
         <Tabs defaultValue="product">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-base font-semibold tracking-tight">
-              Profit breakdown
-            </h2>
-            <TabsList className="h-8">
-              <TabsTrigger value="product" className="text-xs">
-                <Package className="mr-1 size-3" /> Product
-              </TabsTrigger>
-              <TabsTrigger value="customer" className="text-xs">
-                <Users className="mr-1 size-3" /> Customer
-              </TabsTrigger>
-              <TabsTrigger value="buyer" className="text-xs">
-                <Store className="mr-1 size-3" /> Dealer
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="mb-3 grid h-10 w-full grid-cols-3 rounded-full bg-secondary/70 p-1">
+            <TabsTrigger value="product" className="rounded-full text-xs">
+              <Package className="mr-1 size-3" /> Product
+            </TabsTrigger>
+            <TabsTrigger value="customer" className="rounded-full text-xs">
+              <Users className="mr-1 size-3" /> Customer
+            </TabsTrigger>
+            <TabsTrigger value="buyer" className="rounded-full text-xs">
+              <Store className="mr-1 size-3" /> Dealer
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="product">
             <GroupSections groups={byProduct} />
@@ -254,14 +252,14 @@ function SummaryCard({
   accent?: "success" | "destructive";
 }) {
   return (
-    <Card className="p-3">
-      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+    <Card className="border-border/70 p-4 shadow-[var(--shadow-card)]">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </div>
       <div
         className={cn(
-          "mt-1 truncate font-display text-lg font-semibold tracking-tight",
-          accent === "success" && "text-success",
+          "mt-1 truncate font-display text-xl font-bold tracking-tight",
+          accent === "success" && "text-primary",
           accent === "destructive" && "text-destructive",
         )}
       >
@@ -288,13 +286,13 @@ function GroupSections({ groups }: { groups: Group[] }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <GroupList
-        title="Top earners"
+        title="TOP EARNERS"
         icon={<TrendingUp className="size-3.5 text-success" />}
         rows={topEarners}
         accent="profit"
       />
       <GroupList
-        title="Worst margins"
+        title="WORST MARGINS"
         icon={<TrendingDown className="size-3.5 text-destructive" />}
         rows={worstMargins}
         accent="margin"

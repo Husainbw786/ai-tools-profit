@@ -1,46 +1,75 @@
-## Add a Ledger tab inside each shared workspace
 
-Adds a simple "Ledger" feature to the existing Links workspace so you and an invited member (your brother) can track who owes whom. Each workspace has its own private ledger, and only members of that workspace can see/edit it — fully isolated from your sales/hisab data, just like Links already are.
+# Visual redesign to match reference
 
-### What you'll see in the UI
+The screenshots show a polished mobile-first design with a consistent visual language. I'll keep all existing features and data wiring — this is purely a presentation refresh.
 
-Inside any workspace (My Space or a Shared space), a new **Tabs switcher** at the top:
-- **Links** (existing)
-- **Ledger** (new)
+## 1. Bottom navigation (mobile)
 
-The Ledger tab shows:
-- A big **net balance card** at the top — e.g. "Brother owes you ₹2,500" or "You owe Brother ₹800", auto-computed from all entries.
-- An **Add entry** button (editors/owners only) opening a dialog with:
-  - Amount (₹)
-  - Direction: **I paid / gave** vs **They paid / gave**
-  - Type: **Entry** (normal) or **Settlement** (cash handed over to clear balance) — settlement rows render with a distinct style and a "Settled" badge.
-  - Optional short note
-- A reverse-chronological list of entries showing: amount, direction arrow, who added it, date, note, and (for editors) edit/delete.
+Replace the current 4-items-plus-sheet bar with a 5-slot bar matching the screenshots:
 
-Viewers can see the ledger and balance but can't add/edit.
+```
+[ Home ]  [ Sales ]  [ + FAB ]  [ Insights ]  [ More ]
+```
 
-### How the balance works
+- Center slot = large circular green "+" FAB that opens the New Sale dialog (currently triggered from Sales page). Floats slightly above the bar.
+- Active item: icon + label in primary green (no filled pill background — matches screenshots).
+- Bar: white/dark card, soft shadow, rounded, safe-area padding.
 
-Net = sum of (entries where you paid) − sum of (entries where they paid), shown from the perspective of whoever is viewing. Settlements are included in the math but visually separated. With only 2 members it's a single number; if a workspace ever has 3+ members, the balance falls back to "per-pair" against the workspace owner (rare for your use case — your brother workspace is just 2 people).
+## 2. New "/more" route (replaces the bottom sheet)
 
-### Technical notes
+A real page listing tools & settings, styled as the screenshot:
+- Appearance card with Light / Dark segmented toggle (new `useTheme` hook writing `class="dark"` on `<html>` + localStorage).
+- List rows with colored circular icons: Customers (count), Dealers (count), Dues (₹ outstanding), Shared links, Archive, Sync to Sheet.
+- Sign out button (destructive text).
+- Footer: "ProfitAI · Resale Ledger · v2.0".
 
-- **New table** `workspace_ledger_entries`: `id`, `workspace_id` (FK), `created_by` (uid), `payer_user_id` (uid — who paid/gave money), `amount_cents` (int, validated >0), `kind` (`entry` | `settlement`), `note` (text, ≤500), `entry_date` (date), `created_at`, `updated_at`.
-- **RLS**, mirroring `workspace_links`:
-  - SELECT: workspace members (`is_workspace_member(ws, uid, 'viewer')`)
-  - INSERT/UPDATE/DELETE: editors+ (`is_workspace_member(ws, uid, 'editor')`), with `created_by = auth.uid()` check on insert.
-  - GRANT `SELECT, INSERT, UPDATE, DELETE` to `authenticated`; `ALL` to `service_role`.
-- **Server fns** in `src/lib/workspace.functions.ts` (reuse `requireSupabaseAuth` + role gating already in place):
-  - `listLedger({ workspaceId })` → entries + members + computed net for caller
-  - `addLedgerEntry({ workspaceId, amount, payerUserId, kind, note, entryDate })`
-  - `updateLedgerEntry`, `deleteLedgerEntry`
-  - Zod validation: amount 1–100,000,00 paise, note ≤500, kind enum, date ISO.
-- **Frontend**: extend `src/routes/links.tsx` `WorkspaceView` to wrap content in `<Tabs>` (Links | Ledger). New `LedgerPanel` component + `LedgerEntryDialog`. Reuses existing shadcn `Tabs`, `Dialog`, `Select`, `Input`.
-- No change to sales/hisab tables or routes — isolation preserved.
+Header theme toggle (moon/sun pill) stays in `AppLayout` header on all pages, matching screenshots 1, 2, 4.
 
-### Files
+## 3. Dashboard (/) polish
 
-- New migration: `supabase/migrations/<ts>_workspace_ledger.sql`
-- Edit: `src/lib/workspace.functions.ts` (add ledger fns + DTOs)
-- Edit: `src/routes/links.tsx` (Tabs + LedgerPanel + LedgerEntryDialog)
-- Edit: `src/integrations/supabase/types.ts` auto-regenerates after migration
+- Hero "Net Profit" card: dark gradient card with subtle radial green glow, large display number, dotted divider, 3-col REV / COST / SALES stats.
+- "₹X to collect" alert row → soft red-tinted card linking to /collections.
+- Profit Trend card with "PEAK ₹X" pill in top-right.
+- Monthly goal card with progress bar + "70% there — ₹X to go in <Month>" caption.
+- Lifetime / period selector in header (already exists, restyle as pill).
+
+## 4. Active sales (/sales)
+
+- Big "Active sales" title + subtitle "N subscriptions under warranty".
+- "+ Add" green pill button in header area.
+- Search input (rounded, icon).
+- Filter tabs: All / Paid / Partial / Unpaid (pill segmented).
+- Cards: avatar with initials (color-coded), product + duration, customer + months, price + profit %, status pill (PAID green / PARTIAL amber / UNPAID red) + "₹X DUE" + "N D LEFT" pill.
+
+## 5. New sale sheet
+
+- "New sale / Record a subscription resale" header.
+- Grouped fields card, Under-warranty toggle row inside.
+- TOTAL / PROFIT side-by-side summary tiles (profit tile green-tinted).
+- "WARRANTY & PARTIES" section.
+- Sticky bottom "Save sale" full-width green button + floating note/chat helper button.
+
+## 6. Insights (/insights)
+
+- 2×2 KPI grid: Revenue, Cost, Profit (green), Unpaid (red).
+- Monthly P&L card with CSV / PDF export buttons, per-month REV/COST/PROFIT/UNPAID rows + "N SALES" pill.
+- Profit breakdown segmented tabs: Product / Customer / Dealer with ranked list ("TOP EARNERS").
+
+## 7. Theme system
+
+- Add `useTheme` hook + small inline script in `__root.tsx` to apply saved theme before hydration (avoids flash).
+- Verify `src/styles.css` tokens render correctly in both modes for the new card surfaces and accent green.
+
+## Technical notes
+
+- Files touched: `AppLayout.tsx` (nav rebuild), new `src/routes/more.tsx`, new `src/hooks/use-theme.ts`, restyle `src/routes/index.tsx`, `src/routes/sales.tsx`, `src/routes/insights.tsx`, `src/components/SalesList.tsx`, `src/components/SaleDialog.tsx`, `src/components/ProfitTrendChart.tsx`, tweaks to `src/styles.css` for gradient/glow tokens.
+- No DB / server-function changes. All hooks (`use-sales`, `use-payments`, `use-contacts`, `use-goal`) stay the same.
+- The center "+" FAB lifts the New Sale dialog into `AppLayout` so it's reachable from every screen (matches screenshots).
+- Mobile-first; desktop keeps the existing top nav.
+
+## Out of scope
+
+- No new features, no schema changes, no auth/data changes.
+- Existing routes `/customers`, `/dealers`, `/collections`, `/archive`, `/links` keep their current pages — only accessed via the new More page on mobile.
+
+Shall I proceed?
