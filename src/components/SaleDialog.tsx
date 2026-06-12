@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2, MessageCircle } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, MessageCircle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +18,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useCreateSale, useDeleteSale, useSales, useUpdateSale } from "@/hooks/use-sales";
-import { formatMoney, whatsAppUrl, type PaymentStatus, type Sale } from "@/lib/sale-utils";
+import {
+  balanceDue,
+  formatMoney,
+  warrantyEnd,
+  whatsAppUrl,
+  type PaymentStatus,
+  type Sale,
+} from "@/lib/sale-utils";
 import { PaymentsSection } from "@/components/PaymentsSection";
 import { toast } from "sonner";
 
@@ -59,6 +66,7 @@ const emptyShared = () => ({
 export function SaleDialog({ open, onOpenChange, sale }: Props) {
   const [shared, setShared] = useState(emptyShared());
   const [items, setItems] = useState<Item[]>([emptyItem()]);
+  const [mode, setMode] = useState<"view" | "edit">("view");
   const createMut = useCreateSale();
   const updateMut = useUpdateSale();
   const deleteMut = useDeleteSale();
@@ -97,6 +105,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
   useEffect(() => {
     if (!open) return;
     if (sale) {
+      setMode("view");
       setShared({
         buyerName: sale.buyerName,
         customerName: sale.customerName,
@@ -117,6 +126,7 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
         },
       ]);
     } else {
+      setMode("edit");
       setShared(emptyShared());
       setItems([emptyItem()]);
     }
@@ -193,13 +203,24 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{sale ? "Edit sale" : "Add sale"}</DialogTitle>
+          <DialogTitle>
+            {sale ? (mode === "view" ? "Sale details" : "Edit sale") : "Add sale"}
+          </DialogTitle>
           <DialogDescription>
             {sale
-              ? "Update this sale."
+              ? mode === "view"
+                ? "Review this sale. Tap Edit to make changes."
+                : "Update this sale."
               : "Record one or more products sold to the same customer."}
           </DialogDescription>
         </DialogHeader>
+        {sale && mode === "view" ? (
+          <SaleView
+            sale={sale}
+            onEdit={() => setMode("edit")}
+            onClose={() => onOpenChange(false)}
+          />
+        ) : (
         <form onSubmit={submit} className="space-y-3">
           {items.map((it, idx) => (
             <div key={idx} className="space-y-3 rounded-md border bg-muted/20 p-3">
@@ -530,7 +551,124 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SaleView({
+  sale,
+  onEdit,
+  onClose,
+}: {
+  sale: Sale;
+  onEdit: () => void;
+  onClose: () => void;
+}) {
+  const due = balanceDue(sale);
+  const end = warrantyEnd(sale);
+  const payColor =
+    sale.paymentStatus === "paid"
+      ? "bg-success/15 text-success"
+      : sale.paymentStatus === "partial"
+        ? "bg-warning/20 text-warning-foreground"
+        : "bg-destructive/15 text-destructive";
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border bg-muted/30 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate font-display text-base font-bold">
+              {sale.productName}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {sale.customerName || "—"} · {sale.durationMonths}mo
+              {sale.quantity > 1 ? ` · ×${sale.quantity}` : ""}
+            </div>
+          </div>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+              payColor,
+            )}
+          >
+            {sale.paymentStatus}
+          </span>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-md bg-background px-2 py-1.5">
+            <div className="text-[10px] uppercase text-muted-foreground">Sell</div>
+            <div className="text-sm font-semibold">{formatMoney(sale.sellPrice)}</div>
+          </div>
+          <div className="rounded-md bg-background px-2 py-1.5">
+            <div className="text-[10px] uppercase text-muted-foreground">Buy</div>
+            <div className="text-sm font-semibold">{formatMoney(sale.buyPrice)}</div>
+          </div>
+          <div className="rounded-md bg-background px-2 py-1.5">
+            <div className="text-[10px] uppercase text-muted-foreground">Profit</div>
+            <div className="text-sm font-semibold text-primary">
+              {formatMoney(sale.sellPrice - sale.buyPrice)}
+            </div>
+          </div>
+        </div>
+        {due > 0 && (
+          <div className="mt-2 rounded-md bg-destructive/10 px-2 py-1.5 text-center text-xs font-semibold text-destructive">
+            {formatMoney(due)} due
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-md border bg-background p-2">
+          <div className="text-muted-foreground">Buyer / Dealer</div>
+          <div className="font-medium">{sale.buyerName || "—"}</div>
+          {sale.dealerNumber && (
+            <div className="text-muted-foreground">{sale.dealerNumber}</div>
+          )}
+        </div>
+        <div className="rounded-md border bg-background p-2">
+          <div className="text-muted-foreground">Customer</div>
+          <div className="font-medium">{sale.customerName || "—"}</div>
+          {sale.customerNumber && (
+            <div className="text-muted-foreground">{sale.customerNumber}</div>
+          )}
+        </div>
+        <div className="rounded-md border bg-background p-2">
+          <div className="text-muted-foreground">Warranty start</div>
+          <div className="font-medium">{format(new Date(sale.warrantyStart), "PP")}</div>
+        </div>
+        <div className="rounded-md border bg-background p-2">
+          <div className="text-muted-foreground">Warranty end</div>
+          <div className="font-medium">{format(end, "PP")}</div>
+        </div>
+      </div>
+
+      {sale.notes && (
+        <div className="rounded-md border bg-muted/20 p-2 text-xs">
+          <div className="mb-0.5 text-muted-foreground">Notes</div>
+          <div className="whitespace-pre-wrap">{sale.notes}</div>
+        </div>
+      )}
+
+      <PaymentsSection sale={sale} />
+
+      <DialogFooter className="gap-2 sm:gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => window.open(whatsAppUrl(sale), "_blank")}
+          className="gap-1"
+        >
+          <MessageCircle className="size-4" /> WhatsApp
+        </Button>
+        <Button type="button" variant="ghost" onClick={onClose}>
+          Close
+        </Button>
+        <Button type="button" onClick={onEdit} className="gap-1">
+          <Pencil className="size-4" /> Edit
+        </Button>
+      </DialogFooter>
+    </div>
   );
 }
