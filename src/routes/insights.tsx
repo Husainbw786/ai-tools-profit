@@ -286,13 +286,13 @@ function GroupSections({ groups }: { groups: Group[] }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <GroupList
-        title="Top earners"
+        title="TOP EARNERS"
         icon={<TrendingUp className="size-3.5 text-success" />}
         rows={topEarners}
         accent="profit"
       />
       <GroupList
-        title="Worst margins"
+        title="WORST MARGINS"
         icon={<TrendingDown className="size-3.5 text-destructive" />}
         rows={worstMargins}
         accent="margin"
