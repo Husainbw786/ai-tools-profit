@@ -341,7 +341,7 @@ function GoalCard({
       <div className="mt-2 text-[11px] text-muted-foreground">
         {reached
           ? "Goal reached 🎉"
-          : `${pct.toFixed(0)}% there — ${formatMoney(Math.max(0, goal - thisMonthProfit))} to go in ${format(now, "MMMM")}`}
+          : `${pct.toFixed(0)}% there — ${formatMoney(Math.max(0, goal - thisMonthProfit))} to go in ${format(new Date(), "MMMM")}`}
       </div>
     </Card>
   );
