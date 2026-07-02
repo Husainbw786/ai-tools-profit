@@ -17,6 +17,7 @@ const SaleInput = z.object({
   dealerNumber: z.string().max(100).optional().nullable(),
   hasWarranty: z.boolean().default(true),
   paymentStatus: z.enum(["paid", "unpaid", "partial"]).default("paid"),
+  initialPaymentAmount: z.number().min(0).max(100_000_000).optional().default(0),
 });
 
 export type SaleDTO = {
@@ -82,6 +83,10 @@ export const createSale = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => SaleInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const initialPayment = Math.min(
+      Math.max(0, data.initialPaymentAmount ?? 0),
+      data.sellPrice * data.quantity,
+    );
     const { data: row, error } = await supabase
       .from("sales")
       .insert({
@@ -103,10 +108,21 @@ export const createSale = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+    if (initialPayment > 0) {
+      const { error: paymentError } = await supabase.from("sale_payments").insert({
+        user_id: userId,
+        sale_id: row.id,
+        amount: initialPayment,
+        paid_at: new Date().toISOString(),
+        method: null,
+        note: "Initial payment",
+      });
+      if (paymentError) throw new Error(paymentError.message);
+    }
     const { appendSaleRow, resolveTabName } = await import("@/lib/sheets.server");
     const tab = await resolveTabName(userId);
     await appendSaleRow(tab, row as any);
-    return toDTO(row);
+    return toDTO(row, initialPayment);
   });
 
 export const updateSale = createServerFn({ method: "POST" })

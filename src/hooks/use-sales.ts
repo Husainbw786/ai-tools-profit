@@ -28,9 +28,24 @@ export function useCreateSale() {
   const qc = useQueryClient();
   const fn = useServerFn(createSale);
   return useMutation({
-    mutationFn: (input: Omit<Sale, "id" | "createdAt" | "amountPaid">) =>
+    mutationFn: (
+      input: Omit<Sale, "id" | "createdAt" | "amountPaid"> & {
+        initialPaymentAmount?: number;
+      },
+    ) =>
       fn({ data: input }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: SALES_KEY }),
+    onSuccess: (row) => {
+      if (row) {
+        qc.setQueryData<Sale[]>(SALES_KEY, (current = []) => {
+          const withoutDuplicate = current.filter((sale) => sale.id !== row.id);
+          return [row, ...withoutDuplicate].sort(
+            (a, b) =>
+              new Date(b.warrantyStart).getTime() - new Date(a.warrantyStart).getTime(),
+          );
+        });
+      }
+      qc.invalidateQueries({ queryKey: SALES_KEY });
+    },
   });
 }
 
