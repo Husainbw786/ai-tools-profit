@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2, MessageCircle, Pencil } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, MessageCircle, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,8 +28,6 @@ import {
 } from "@/lib/sale-utils";
 import { PaymentsSection } from "@/components/PaymentsSection";
 import { toast } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
-import { createPayment } from "@/lib/payments.functions";
 
 type Props = {
   open: boolean;
@@ -75,7 +73,6 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
   const updateMut = useUpdateSale();
   const deleteMut = useDeleteSale();
   const { data: allSales = [] } = useSales();
-  const createPay = useServerFn(createPayment);
   const busy = createMut.isPending || updateMut.isPending || deleteMut.isPending;
 
   const uniq = (arr: (string | null | undefined)[]) =>
@@ -152,6 +149,8 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
     (s, it) => s + (it.sellPrice - it.buyPrice) * (it.quantity || 1),
     0,
   );
+  const fullPaymentSelected =
+    !sale && totalRevenue > 0 && shared.paymentStatus === "paid" && amountReceived >= totalRevenue;
 
   // Auto-sync received amount with status / total when user hasn't manually edited it
   useEffect(() => {
@@ -186,9 +185,11 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
         });
         toast.success("Sale updated");
       } else {
-        const created = [] as { id: string; sellPrice: number }[];
+        let remainingReceived = Math.min(amountReceived, totalRevenue);
         for (const it of items) {
-          const row = await createMut.mutateAsync({
+          const lineTotal = it.sellPrice * (it.quantity || 1);
+          const initialPaymentAmount = Math.max(0, Math.min(remainingReceived, lineTotal));
+          await createMut.mutateAsync({
             ...shared,
             productName: it.productName,
             durationMonths: it.durationMonths,
@@ -196,30 +197,9 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
             buyPrice: it.buyPrice,
             sellPrice: it.sellPrice,
             hasWarranty: it.hasWarranty,
+            initialPaymentAmount,
           });
-          if (row?.id) created.push({ id: row.id, sellPrice: it.sellPrice * (it.quantity || 1) });
-        }
-        // Record initial payment if any was received
-        if (amountReceived > 0 && created.length > 0 && totalRevenue > 0) {
-          let remaining = Math.min(amountReceived, totalRevenue);
-          for (let i = 0; i < created.length; i++) {
-            const c = created[i];
-            const portion = i === created.length - 1
-              ? remaining
-              : Math.min(remaining, c.sellPrice);
-            if (portion > 0) {
-              await createPay({
-                data: {
-                  saleId: c.id,
-                  amount: portion,
-                  paidAt: new Date().toISOString(),
-                  method: null,
-                  note: null,
-                },
-              });
-              remaining -= portion;
-            }
-          }
+          remainingReceived -= initialPaymentAmount;
         }
         toast.success(items.length > 1 ? `${items.length} sales added` : "Sale added");
       }
@@ -580,13 +560,16 @@ export function SaleDialog({ open, onOpenChange, sale }: Props) {
                 {totalRevenue > 0 && (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant={fullPaymentSelected ? "default" : "outline"}
                     size="sm"
                     onClick={() => {
                       setReceivedTouched(true);
+                      setShared((current) => ({ ...current, paymentStatus: "paid" }));
                       setAmountReceived(totalRevenue);
                     }}
+                    className={cn(fullPaymentSelected && "shadow-[var(--shadow-glow)]")}
                   >
+                    {fullPaymentSelected && <Check className="size-3.5" />}
                     Full
                   </Button>
                 )}
