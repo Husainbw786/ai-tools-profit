@@ -1,5 +1,5 @@
 import { format, startOfMonth } from "date-fns";
-import { balanceDue, profit, type Sale } from "@/lib/sale-utils";
+import { balanceDue, effectiveRevenue, profit, type Sale } from "@/lib/sale-utils";
 
 export type Group = {
   key: string;
@@ -24,7 +24,7 @@ const buildGroups = (
       ({ key, count: 0, units: 0, revenue: 0, cost: 0, profit: 0, marginPct: 0 } as Group);
     existing.count += 1;
     existing.units += s.quantity || 1;
-    existing.revenue += s.sellPrice;
+    existing.revenue += effectiveRevenue(s);
     existing.cost += s.buyPrice;
     existing.profit += profit(s);
     map.set(key, existing);
@@ -72,7 +72,7 @@ export const monthlyPnL = (sales: Sale[]): MonthRow[] => {
         unpaidCount: 0,
       } as MonthRow);
     row.count += 1;
-    row.revenue += s.sellPrice;
+    row.revenue += effectiveRevenue(s);
     row.cost += s.buyPrice;
     row.profit += profit(s);
     const due = balanceDue(s);
