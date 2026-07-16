@@ -5,6 +5,7 @@ import {
   formatPct,
   formatMoney,
   isExpired,
+  isRefunded,
   marginPct,
   profit,
   warrantyEnd,
@@ -56,6 +57,7 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
     <ul className="space-y-3">
       {sales.map((s) => {
         const expired = isExpired(s);
+        const refunded = isRefunded(s);
         const end = warrantyEnd(s);
         const days = daysRemaining(s);
         const p = profit(s);
@@ -82,7 +84,7 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
             onClick={() => onRowClick?.(s)}
             className={cn(
               "group relative cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)] transition-all hover:border-primary/30 hover:shadow-[var(--shadow-elegant)]",
-              expired && "opacity-65",
+              (expired || refunded) && "opacity-65",
             )}
           >
             <div className="flex items-center gap-3">
@@ -139,7 +141,12 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
             </div>
             <div className="mt-3 flex items-center justify-between gap-2 border-t border-dashed border-border/70 pt-2.5">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span
+                {refunded ? (
+                  <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-bold tracking-wide text-destructive">
+                    REFUNDED
+                  </span>
+                ) : (
+                  <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide",
                     payColor,
@@ -147,7 +154,8 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
                 >
                   {payLabel}
                 </span>
-                {due > 0 && (
+                )}
+                {!refunded && due > 0 && (
                   <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
                     {formatMoney(due)} DUE
                   </span>

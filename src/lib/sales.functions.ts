@@ -18,6 +18,9 @@ const SaleInput = z.object({
   hasWarranty: z.boolean().default(true),
   paymentStatus: z.enum(["paid", "unpaid", "partial"]).default("paid"),
   initialPaymentAmount: z.number().min(0).max(100_000_000).optional().default(0),
+  refundedAt: z.string().nullable().optional(),
+  refundAmount: z.number().min(0).max(100_000_000).nullable().optional(),
+  refundReason: z.string().max(500).nullable().optional(),
 });
 
 export type SaleDTO = {
@@ -37,6 +40,9 @@ export type SaleDTO = {
   paymentStatus: "paid" | "unpaid" | "partial";
   amountPaid: number;
   createdAt: string;
+  refundedAt: string | null;
+  refundAmount: number | null;
+  refundReason: string | null;
 };
 
 const toDTO = (row: any, amountPaid = 0): SaleDTO => ({
@@ -56,6 +62,9 @@ const toDTO = (row: any, amountPaid = 0): SaleDTO => ({
   paymentStatus: (row.payment_status ?? "paid") as "paid" | "unpaid" | "partial",
   amountPaid,
   createdAt: row.created_at,
+  refundedAt: row.refunded_at ?? null,
+  refundAmount: row.refund_amount != null ? Number(row.refund_amount) : null,
+  refundReason: row.refund_reason ?? null,
 });
 
 export const listSales = createServerFn({ method: "GET" })
@@ -147,6 +156,9 @@ export const updateSale = createServerFn({ method: "POST" })
     if (p.dealerNumber !== undefined) payload.dealer_number = p.dealerNumber;
     if (p.hasWarranty !== undefined) payload.has_warranty = p.hasWarranty;
     if (p.paymentStatus !== undefined) (payload as any).payment_status = p.paymentStatus;
+    if (p.refundedAt !== undefined) (payload as any).refunded_at = p.refundedAt;
+    if (p.refundAmount !== undefined) (payload as any).refund_amount = p.refundAmount;
+    if (p.refundReason !== undefined) (payload as any).refund_reason = p.refundReason;
     const { data: row, error } = await supabase
       .from("sales")
       .update(payload)

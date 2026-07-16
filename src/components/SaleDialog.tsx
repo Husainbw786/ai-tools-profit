@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2, MessageCircle, Pencil, Check } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, MessageCircle, Pencil, Check, Undo2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
   formatMoney,
   warrantyEnd,
   whatsAppUrl,
+  isRefunded,
   type PaymentStatus,
   type Sale,
 } from "@/lib/sale-utils";
@@ -630,6 +631,41 @@ function SaleView({
 }) {
   const due = balanceDue(sale);
   const end = warrantyEnd(sale);
+  const refunded = isRefunded(sale);
+  const updateMut = useUpdateSale();
+  const [showRefund, setShowRefund] = useState(false);
+  const [refundAmt, setRefundAmt] = useState<number>(sale.sellPrice);
+  const [refundReason, setRefundReason] = useState("");
+  const effectiveProfit =
+    (refunded ? sale.sellPrice - (sale.refundAmount ?? sale.sellPrice) : sale.sellPrice) -
+    sale.buyPrice;
+  const submitRefund = async () => {
+    try {
+      await updateMut.mutateAsync({
+        id: sale.id,
+        patch: {
+          refundedAt: new Date().toISOString(),
+          refundAmount: Math.max(0, Math.min(refundAmt, sale.sellPrice)),
+          refundReason: refundReason.trim() || null,
+        },
+      });
+      toast.success("Refund recorded");
+      setShowRefund(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+  const undoRefund = async () => {
+    try {
+      await updateMut.mutateAsync({
+        id: sale.id,
+        patch: { refundedAt: null, refundAmount: null, refundReason: null },
+      });
+      toast.success("Refund removed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
   const payColor =
     sale.paymentStatus === "paid"
       ? "bg-success/15 text-success"
@@ -669,12 +705,23 @@ function SaleView({
           </div>
           <div className="rounded-md bg-background px-2 py-1.5">
             <div className="text-[10px] uppercase text-muted-foreground">Profit</div>
-            <div className="text-sm font-semibold text-primary">
-              {formatMoney(sale.sellPrice - sale.buyPrice)}
+            <div
+              className={cn(
+                "text-sm font-semibold",
+                effectiveProfit >= 0 ? "text-primary" : "text-destructive",
+              )}
+            >
+              {formatMoney(effectiveProfit)}
             </div>
           </div>
         </div>
-        {due > 0 && (
+        {refunded && (
+          <div className="mt-2 rounded-md bg-destructive/10 px-2 py-1.5 text-center text-xs font-semibold text-destructive">
+            REFUNDED · {formatMoney(sale.refundAmount ?? sale.sellPrice)} returned
+            {sale.refundedAt ? ` · ${format(new Date(sale.refundedAt), "PP")}` : ""}
+          </div>
+        )}
+        {!refunded && due > 0 && (
           <div className="mt-2 rounded-md bg-destructive/10 px-2 py-1.5 text-center text-xs font-semibold text-destructive">
             {formatMoney(due)} due
           </div>
@@ -714,6 +761,98 @@ function SaleView({
       )}
 
       <PaymentsSection sale={sale} />
+
+      <div className="rounded-md border bg-muted/20 p-3">
+        {refunded ? (
+          <div className="space-y-2">
+            <div className="text-xs">
+              <div className="font-semibold text-destructive">Refunded</div>
+              <div className="text-muted-foreground">
+                {formatMoney(sale.refundAmount ?? sale.sellPrice)} returned to customer
+                {sale.refundReason ? ` · ${sale.refundReason}` : ""}
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={undoRefund}
+              disabled={updateMut.isPending}
+            >
+              <Undo2 className="size-3.5" /> Undo refund
+            </Button>
+          </div>
+        ) : showRefund ? (
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Refund this sale</Label>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={refundAmt === 0 ? "" : String(refundAmt)}
+                placeholder="Refund amount"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  setRefundAmt(v === "" ? 0 : Number(v));
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRefundAmt(sale.sellPrice)}
+              >
+                Full
+              </Button>
+            </div>
+            <Input
+              placeholder="Reason (optional)"
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              className="text-xs"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Profit will drop to {formatMoney(sale.sellPrice - refundAmt - sale.buyPrice)}.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="flex-1"
+                onClick={submitRefund}
+                disabled={updateMut.isPending}
+              >
+                {updateMut.isPending ? "Saving…" : "Mark refunded"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowRefund(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full text-destructive hover:text-destructive"
+            onClick={() => {
+              setRefundAmt(sale.sellPrice);
+              setShowRefund(true);
+            }}
+          >
+            <RotateCcw className="size-3.5" /> Mark as refunded
+          </Button>
+        )}
+      </div>
 
       <DialogFooter className="gap-2 sm:gap-2">
         <Button
