@@ -29,7 +29,7 @@ export function useCreateSale() {
   const fn = useServerFn(createSale);
   return useMutation({
     mutationFn: (
-      input: Omit<Sale, "id" | "createdAt" | "amountPaid"> & {
+      input: Omit<Sale, "id" | "createdAt" | "amountPaid" | "refundedAt" | "refundAmount" | "refundReason"> & {
         initialPaymentAmount?: number;
       },
     ) =>
