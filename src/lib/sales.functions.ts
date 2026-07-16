@@ -40,6 +40,9 @@ export type SaleDTO = {
   paymentStatus: "paid" | "unpaid" | "partial";
   amountPaid: number;
   createdAt: string;
+  refundedAt: string | null;
+  refundAmount: number | null;
+  refundReason: string | null;
 };
 
 const toDTO = (row: any, amountPaid = 0): SaleDTO => ({
@@ -59,6 +62,9 @@ const toDTO = (row: any, amountPaid = 0): SaleDTO => ({
   paymentStatus: (row.payment_status ?? "paid") as "paid" | "unpaid" | "partial",
   amountPaid,
   createdAt: row.created_at,
+  refundedAt: row.refunded_at ?? null,
+  refundAmount: row.refund_amount != null ? Number(row.refund_amount) : null,
+  refundReason: row.refund_reason ?? null,
 });
 
 export const listSales = createServerFn({ method: "GET" })
