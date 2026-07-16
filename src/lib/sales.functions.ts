@@ -156,6 +156,9 @@ export const updateSale = createServerFn({ method: "POST" })
     if (p.dealerNumber !== undefined) payload.dealer_number = p.dealerNumber;
     if (p.hasWarranty !== undefined) payload.has_warranty = p.hasWarranty;
     if (p.paymentStatus !== undefined) (payload as any).payment_status = p.paymentStatus;
+    if (p.refundedAt !== undefined) (payload as any).refunded_at = p.refundedAt;
+    if (p.refundAmount !== undefined) (payload as any).refund_amount = p.refundAmount;
+    if (p.refundReason !== undefined) (payload as any).refund_reason = p.refundReason;
     const { data: row, error } = await supabase
       .from("sales")
       .update(payload)
