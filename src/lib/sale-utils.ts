@@ -19,9 +19,17 @@ export type Sale = {
   paymentStatus: PaymentStatus;
   amountPaid: number;
   createdAt: string;
+  refundedAt?: string | null;
+  refundAmount?: number | null;
+  refundReason?: string | null;
 };
 
-export const profit = (s: Sale) => s.sellPrice - s.buyPrice;
+export const isRefunded = (s: Sale) => !!s.refundedAt;
+
+export const effectiveRevenue = (s: Sale) =>
+  isRefunded(s) ? s.sellPrice - (s.refundAmount ?? s.sellPrice) : s.sellPrice;
+
+export const profit = (s: Sale) => effectiveRevenue(s) - s.buyPrice;
 
 export const balanceDue = (s: Sale) =>
   Math.max(0, s.sellPrice - (s.amountPaid ?? 0));
