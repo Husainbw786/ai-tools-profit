@@ -109,6 +109,9 @@ export type Database = {
           payment_status: string
           product_name: string
           quantity: number
+          refund_amount: number | null
+          refund_reason: string | null
+          refunded_at: string | null
           sell_price: number
           updated_at: string
           user_id: string
@@ -128,6 +131,9 @@ export type Database = {
           payment_status?: string
           product_name: string
           quantity?: number
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
           sell_price?: number
           updated_at?: string
           user_id: string
@@ -147,6 +153,9 @@ export type Database = {
           payment_status?: string
           product_name?: string
           quantity?: number
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
           sell_price?: number
           updated_at?: string
           user_id?: string
