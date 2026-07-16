@@ -18,6 +18,9 @@ const SaleInput = z.object({
   hasWarranty: z.boolean().default(true),
   paymentStatus: z.enum(["paid", "unpaid", "partial"]).default("paid"),
   initialPaymentAmount: z.number().min(0).max(100_000_000).optional().default(0),
+  refundedAt: z.string().nullable().optional(),
+  refundAmount: z.number().min(0).max(100_000_000).nullable().optional(),
+  refundReason: z.string().max(500).nullable().optional(),
 });
 
 export type SaleDTO = {
