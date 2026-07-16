@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2, MessageCircle, Pencil, Check } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, MessageCircle, Pencil, Check, Undo2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
   formatMoney,
   warrantyEnd,
   whatsAppUrl,
+  isRefunded,
   type PaymentStatus,
   type Sale,
 } from "@/lib/sale-utils";
