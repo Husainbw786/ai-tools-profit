@@ -225,6 +225,28 @@ function MorePage() {
             <ChevronRight className="size-4 text-muted-foreground/60" />
           </button>
         )}
+        <button
+          type="button"
+          disabled={backupBackfill.isPending}
+          onClick={() => backupBackfill.mutate()}
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-secondary/50 disabled:opacity-60"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <DatabaseBackup
+              className={cn(
+                "size-4",
+                backupBackfill.isPending && "animate-spin",
+              )}
+            />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">Sync to Backup DB</div>
+            <div className="text-[11px] text-muted-foreground">
+              Copy existing data to second Supabase project
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground/60" />
+        </button>
       </Card>
 
       <Button
