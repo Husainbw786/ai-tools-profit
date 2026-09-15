@@ -72,3 +72,6 @@ the workflow from the Actions tab or push to `main`.
   to **Redirect URLs** so email confirmation links land on the deployed app.
 - Google sign-in uses Supabase's own Google provider (Authentication > Providers).
   Email/password works out of the box.
+- Migrating data from another Supabase project: rows keep the old users' ids, so
+  create the user accounts here, then run `supabase/scripts/remap_user_ids.sql`
+  in the SQL editor to point the rows at the new ids.
