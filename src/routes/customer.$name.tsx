@@ -10,6 +10,8 @@ import { useSales } from "@/hooks/use-sales";
 import {
   formatMoney,
   formatPct,
+  lineCost,
+  lineTotal,
   marginPct,
   profit,
   type Sale,
@@ -37,8 +39,8 @@ function CustomerPage() {
   );
 
   const totals = useMemo(() => {
-    const revenue = customerSales.reduce((a, s) => a + s.sellPrice, 0);
-    const cost = customerSales.reduce((a, s) => a + s.buyPrice, 0);
+    const revenue = customerSales.reduce((a, s) => a + lineTotal(s), 0);
+    const cost = customerSales.reduce((a, s) => a + lineCost(s), 0);
     const totalProfit = customerSales.reduce((a, s) => a + profit(s), 0);
     const avgMargin =
       customerSales.length > 0
