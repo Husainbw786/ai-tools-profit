@@ -11,6 +11,7 @@ import { useSales } from "@/hooks/use-sales";
 import {
   balanceDue,
   formatMoney,
+  lineTotal,
   reminderWhatsAppUrl,
   type Sale,
 } from "@/lib/sale-utils";
@@ -39,7 +40,7 @@ function CollectionsPage() {
   }, [sales]);
 
   const totalDue = unpaid.reduce((acc, s) => acc + balanceDue(s), 0);
-  const totalBilled = unpaid.reduce((acc, s) => acc + s.sellPrice, 0);
+  const totalBilled = unpaid.reduce((acc, s) => acc + lineTotal(s), 0);
 
   return (
     <AppLayout>
@@ -120,7 +121,7 @@ function CollectionsPage() {
                         {formatMoney(due)}
                       </div>
                       <div className="text-[10px] text-muted-foreground">
-                        of {formatMoney(s.sellPrice)}
+                        of {formatMoney(lineTotal(s))}
                       </div>
                     </div>
                   </div>
