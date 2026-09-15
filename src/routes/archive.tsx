@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { SaleDialog } from "@/components/SaleDialog";
+import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
 import { Input } from "@/components/ui/input";
 import { useSales } from "@/hooks/use-sales";
@@ -60,7 +60,7 @@ function ArchivePage() {
           onRowClick={(s) => { setEditing(s); setDialogOpen(true); }}
         />
       </div>
-      <SaleDialog open={dialogOpen} onOpenChange={setDialogOpen} sale={editing} />
+      <SaleSheet open={dialogOpen} onOpenChange={setDialogOpen} sale={editing} />
     </AppLayout>
   );
 }

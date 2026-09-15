@@ -13,7 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { SaleDialog } from "@/components/SaleDialog";
+import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
 import { ProfitTrendChart } from "@/components/ProfitTrendChart";
 import { Button } from "@/components/ui/button";
@@ -229,7 +229,7 @@ function Index() {
         />
       </div>
 
-      <SaleDialog open={dialogOpen} onOpenChange={setDialogOpen} sale={editing} />
+      <SaleSheet open={dialogOpen} onOpenChange={setDialogOpen} sale={editing} />
     </AppLayout>
   );
 }

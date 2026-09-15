@@ -1,5 +1,5 @@
 // Simple cross-component bus so the floating "+" FAB in AppLayout
-// can open the SaleDialog mounted at the root.
+// can open the SaleSheet mounted at the root.
 
 const EVENT = "profitai:new-sale";
 

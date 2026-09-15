@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { differenceInCalendarDays } from "date-fns";
 import { MessageCircle, Wallet, AlertCircle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { SaleDialog } from "@/components/SaleDialog";
+import { SaleSheet } from "@/components/SaleSheet";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -153,7 +153,7 @@ function CollectionsPage() {
       </div>
 
       {editing && (
-        <SaleDialog
+        <SaleSheet
           open={!!editing}
           onOpenChange={(o) => !o && setEditing(null)}
           sale={editing}

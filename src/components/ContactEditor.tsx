@@ -1,21 +1,14 @@
 import { useEffect, useState } from "react";
-import { Save, X } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/primitives";
 import { useContacts, useUpsertContact, findContact } from "@/hooks/use-contacts";
-import { TAG_PRESETS, tagColor } from "@/lib/contacts-utils";
-import { cn } from "@/lib/utils";
+import { TAG_PRESETS } from "@/lib/contacts-utils";
 import { toast } from "sonner";
 
-export function ContactEditor({
-  kind,
-  name,
-}: {
-  kind: "customer" | "dealer";
-  name: string;
-}) {
+export function ContactEditor({ kind, name }: { kind: "customer" | "dealer"; name: string }) {
   const { data: contacts = [] } = useContacts();
   const upsert = useUpsertContact();
   const existing = findContact(contacts, kind, name);
@@ -27,6 +20,7 @@ export function ContactEditor({
   useEffect(() => {
     setTags(existing?.tags ?? []);
     setNotes(existing?.notes ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id]);
 
   const toggle = (t: string) =>
@@ -40,60 +34,46 @@ export function ContactEditor({
   };
 
   const save = async () => {
-    await upsert.mutateAsync({
-      kind,
-      displayName: name,
-      tags,
-      notes: notes.trim() ? notes.trim() : null,
-    });
-    toast.success("Saved");
+    try {
+      await upsert.mutateAsync({
+        kind,
+        displayName: name,
+        tags,
+        notes: notes.trim() ? notes.trim() : null,
+      });
+      toast.success("Saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    }
   };
 
+  const custom = tags.filter((t) => !TAG_PRESETS.includes(t as (typeof TAG_PRESETS)[number]));
+
   return (
-    <Card className="border-border/70 bg-card p-4 shadow-[var(--shadow-soft)]">
-      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        Tags
-      </div>
+    <div className="mt-6 border-t border-border pt-4">
+      <div className="text-[12px] font-bold text-muted-foreground">Tags</div>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {TAG_PRESETS.map((t) => {
-          const active = tags.includes(t);
-          return (
+        {TAG_PRESETS.map((t) => (
+          <Chip key={t} active={tags.includes(t)} onClick={() => toggle(t)}>
+            {t}
+          </Chip>
+        ))}
+        {custom.map((t) => (
+          <span
+            key={t}
+            className="inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-[7px] text-[12px] font-bold text-background"
+          >
+            {t}
             <button
-              key={t}
               type="button"
               onClick={() => toggle(t)}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-[11px] font-medium transition",
-                active
-                  ? tagColor(t)
-                  : "border-dashed border-border text-muted-foreground hover:text-foreground",
-              )}
+              aria-label={`Remove tag ${t}`}
+              className="opacity-70 hover:opacity-100"
             >
-              {active ? "✓ " : "+ "}
-              {t}
+              <X className="size-3" />
             </button>
-          );
-        })}
-        {tags
-          .filter((t) => !TAG_PRESETS.includes(t as (typeof TAG_PRESETS)[number]))
-          .map((t) => (
-            <span
-              key={t}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium",
-                tagColor(t),
-              )}
-            >
-              {t}
-              <button
-                type="button"
-                onClick={() => toggle(t)}
-                className="opacity-70 hover:opacity-100"
-              >
-                <X className="size-3" />
-              </button>
-            </span>
-          ))}
+          </span>
+        ))}
       </div>
       <div className="mt-2 flex gap-2">
         <Input
@@ -105,31 +85,36 @@ export function ContactEditor({
               addTag();
             }
           }}
-          placeholder="Custom tag…"
-          className="h-8 text-xs"
+          placeholder="Custom tag"
+          className="h-10 text-[13px]"
         />
-        <Button type="button" size="sm" variant="outline" onClick={addTag} className="h-8">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addTag}
+          className="h-10 rounded-[12px] px-4 text-[13px]"
+        >
           Add
         </Button>
       </div>
 
-      <div className="mt-4 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        Notes
-      </div>
+      <div className="mt-4 text-[12px] font-bold text-muted-foreground">Notes</div>
       <Textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Private notes about this contact…"
+        placeholder="Private notes about this contact"
         rows={3}
-        className="mt-2 text-sm"
+        className="mt-2"
       />
 
-      <div className="mt-3 flex justify-end">
-        <Button onClick={save} disabled={upsert.isPending} size="sm" className="gap-1.5">
-          <Save className="size-3.5" />
-          {upsert.isPending ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </Card>
+      <Button
+        variant="outline"
+        onClick={save}
+        disabled={upsert.isPending}
+        className="mt-3 h-[46px] w-full text-[14px]"
+      >
+        {upsert.isPending ? "Saving…" : "Save"}
+      </Button>
+    </div>
   );
 }

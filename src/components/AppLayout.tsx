@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
-import { SaleDialog } from "@/components/SaleDialog";
+import { SaleSheet } from "@/components/SaleSheet";
 import { onNewSale, openNewSale } from "@/lib/new-sale-bus";
 
 const desktopNav = [
@@ -170,7 +170,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <SaleDialog open={dialogOpen} onOpenChange={setDialogOpen} sale={null} />
+      <SaleSheet open={dialogOpen} onOpenChange={setDialogOpen} sale={null} />
     </div>
   );
 }

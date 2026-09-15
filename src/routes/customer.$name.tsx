@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, MessageCircle, Phone } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SalesList } from "@/components/SalesList";
-import { SaleDialog } from "@/components/SaleDialog";
+import { SaleSheet } from "@/components/SaleSheet";
 import { ContactEditor } from "@/components/ContactEditor";
 import { Card } from "@/components/ui/card";
 import { useSales } from "@/hooks/use-sales";
@@ -142,7 +142,7 @@ function CustomerPage() {
         />
       </div>
 
-      <SaleDialog
+      <SaleSheet
         open={editing !== null}
         onOpenChange={(o) => !o && setEditing(null)}
         sale={editing}
