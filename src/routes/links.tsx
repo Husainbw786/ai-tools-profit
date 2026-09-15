@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -376,7 +376,7 @@ function LinkDialog({
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
 
-  useMemo(() => {
+  useEffect(() => {
     if (open) {
       setTitle(initial?.title ?? "");
       setUrl(initial?.url ?? "");
@@ -841,7 +841,7 @@ function LedgerEntryDialog({
   const [note, setNote] = useState("");
   const [entryDate, setEntryDate] = useState(today);
 
-  useMemo(() => {
+  useEffect(() => {
     if (open) {
       setAmount(initial ? (initial.amountCents / 100).toString() : "");
       setPayerUserId(initial?.payerUserId ?? viewerId);

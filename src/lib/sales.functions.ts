@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { TablesUpdate } from "@/integrations/supabase/types";
+import { derivePaymentStatus } from "@/lib/sale-utils";
 
 const SaleInput = z.object({
   productName: z.string().min(1).max(200),
@@ -92,10 +93,13 @@ export const createSale = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => SaleInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const initialPayment = Math.min(
-      Math.max(0, data.initialPaymentAmount ?? 0),
-      data.sellPrice * data.quantity,
-    );
+    const billed = data.sellPrice * data.quantity;
+    const initialPayment = Math.min(Math.max(0, data.initialPaymentAmount ?? 0), billed);
+    // The status is derived from the money actually recorded, not the button
+    // the user tapped: a "paid" sale with a partial amount received is partial.
+    // This is also what the DB trigger would set once the payment row lands,
+    // so the row we mirror to Sheets/backup below is already correct.
+    const paymentStatus = derivePaymentStatus(billed, initialPayment);
     const { data: row, error } = await supabase
       .from("sales")
       .insert({
@@ -112,7 +116,7 @@ export const createSale = createServerFn({ method: "POST" })
         customer_number: data.customerNumber ?? null,
         dealer_number: data.dealerNumber ?? null,
         has_warranty: data.hasWarranty,
-        payment_status: data.paymentStatus,
+        payment_status: paymentStatus,
       } as any)
       .select("*")
       .single();

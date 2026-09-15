@@ -7,15 +7,8 @@ import { SaleDialog } from "@/components/SaleDialog";
 import { ContactEditor } from "@/components/ContactEditor";
 import { Card } from "@/components/ui/card";
 import { useSales } from "@/hooks/use-sales";
-import {
-  formatMoney,
-  formatPct,
-  lineCost,
-  lineTotal,
-  marginPct,
-  profit,
-  type Sale,
-} from "@/lib/sale-utils";
+import { formatMoney, formatPct, type Sale } from "@/lib/sale-utils";
+import { summarizeSales } from "@/lib/insights-utils";
 
 export const Route = createFileRoute("/dealer/$name")({
   head: ({ params }) => ({
@@ -38,16 +31,7 @@ function DealerPage() {
     [sales, decoded],
   );
 
-  const totals = useMemo(() => {
-    const revenue = dealerSales.reduce((a, s) => a + lineTotal(s), 0);
-    const cost = dealerSales.reduce((a, s) => a + lineCost(s), 0);
-    const totalProfit = dealerSales.reduce((a, s) => a + profit(s), 0);
-    const avgMargin =
-      dealerSales.length > 0
-        ? dealerSales.reduce((a, s) => a + marginPct(s), 0) / dealerSales.length
-        : 0;
-    return { revenue, cost, totalProfit, avgMargin };
-  }, [dealerSales]);
+  const totals = useMemo(() => summarizeSales(dealerSales), [dealerSales]);
 
   const phone = dealerSales.find((s) => s.dealerNumber)?.dealerNumber ?? "";
 
@@ -104,15 +88,15 @@ function DealerPage() {
             Profit earned
           </div>
           <div className="mt-1 font-display text-lg font-semibold tracking-tight text-success">
-            {formatMoney(totals.totalProfit)}
+            {formatMoney(totals.profit)}
           </div>
         </Card>
         <Card className="border-border/70 bg-card p-3 shadow-[var(--shadow-soft)]">
           <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Avg margin
+            Margin
           </div>
           <div className="mt-1 font-display text-lg font-semibold tracking-tight">
-            {formatPct(totals.avgMargin)}
+            {formatPct(totals.marginPct)}
           </div>
         </Card>
       </div>

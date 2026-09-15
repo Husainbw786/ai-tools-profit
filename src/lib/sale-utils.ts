@@ -1,4 +1,4 @@
-import { addMonths, differenceInCalendarDays } from "date-fns";
+import { addMonths, differenceInCalendarDays, endOfDay, startOfDay } from "date-fns";
 
 export type PaymentStatus = "paid" | "unpaid" | "partial";
 
@@ -33,22 +33,50 @@ export const lineTotal = (s: Sale) => s.sellPrice * qty(s);
 
 export const lineCost = (s: Sale) => s.buyPrice * qty(s);
 
-export const effectiveRevenue = (s: Sale) =>
-  isRefunded(s) ? lineTotal(s) - (s.refundAmount ?? lineTotal(s)) : lineTotal(s);
+// Amount returned to the customer. A refund with no explicit amount is a full refund.
+export const refundedAmount = (s: Sale) => (isRefunded(s) ? (s.refundAmount ?? lineTotal(s)) : 0);
+
+// Revenue actually kept after refunds.
+export const effectiveRevenue = (s: Sale) => lineTotal(s) - refundedAmount(s);
 
 export const profit = (s: Sale) => effectiveRevenue(s) - lineCost(s);
 
-export const balanceDue = (s: Sale) =>
-  Math.max(0, lineTotal(s) - (s.amountPaid ?? 0));
+/**
+ * Derive a payment status from what has been paid against what is billed.
+ * Shared by the client (previews) and the server (createSale) so both agree.
+ */
+export const derivePaymentStatus = (total: number, paid: number): PaymentStatus =>
+  paid >= total ? "paid" : paid > 0 ? "partial" : "unpaid";
 
-export const marginPct = (s: Sale) =>
-  s.buyPrice > 0 ? ((s.sellPrice - s.buyPrice) / s.buyPrice) * 100 : 0;
+/**
+ * Outstanding balance on a sale.
+ *
+ * - A refunded sale has nothing left to collect.
+ * - A sale marked "paid" owes nothing, even if no payment rows exist (sales
+ *   recorded before payment tracking was added have a status but no payments).
+ * - Otherwise it is what is billed minus what has been recorded as paid.
+ *
+ * `paid` defaults to the amount aggregated by the server, but callers that
+ * have a fresher payments list (e.g. the payments panel) can pass their own sum.
+ */
+export const balanceDue = (s: Sale, paid: number = s.amountPaid ?? 0) => {
+  if (isRefunded(s) || s.paymentStatus === "paid") return 0;
+  return Math.max(0, lineTotal(s) - paid);
+};
 
-export const formatPct = (n: number) =>
-  `${n > 0 ? "+" : ""}${n.toFixed(0)}%`;
+// Margin relative to cost. Returns 0 when there is no cost to compare against.
+export const marginPctOf = (profitAmount: number, cost: number) =>
+  cost > 0 ? (profitAmount / cost) * 100 : 0;
 
-export const warrantyEnd = (s: Sale) =>
-  addMonths(new Date(s.warrantyStart), s.durationMonths);
+// Per-sale margin, refund-aware so it matches the profit shown next to it.
+export const marginPct = (s: Sale) => marginPctOf(profit(s), lineCost(s));
+
+export const formatPct = (n: number) => {
+  const rounded = Math.round(n);
+  return `${rounded > 0 ? "+" : ""}${rounded}%`;
+};
+
+export const warrantyEnd = (s: Sale) => addMonths(new Date(s.warrantyStart), s.durationMonths);
 
 export const isExpired = (s: Sale, now: Date = new Date()) =>
   warrantyEnd(s).getTime() <= now.getTime();
@@ -75,20 +103,32 @@ export const formatMoney = (n: number) =>
 
 export type DateRange = { from: Date; to: Date };
 
+/**
+ * Keep sales whose start date falls within the range, inclusive of both days.
+ * The bounds are widened to whole days so a "to" date picked from a calendar
+ * (midnight) still includes sales recorded later that same day.
+ */
 export const filterByRange = (sales: Sale[], range: DateRange | null) => {
   if (!range) return sales;
-  const fromMs = range.from.getTime();
-  const toMs = range.to.getTime();
+  const fromMs = startOfDay(range.from).getTime();
+  const toMs = endOfDay(range.to).getTime();
   return sales.filter((s) => {
     const t = new Date(s.warrantyStart).getTime();
     return t >= fromMs && t <= toMs;
   });
 };
 
+const fmtDate = (d: Date) =>
+  d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+const waUrl = (phone: string | null | undefined, text: string) => {
+  const digits = (phone ?? "").replace(/[^0-9]/g, "");
+  const encoded = encodeURIComponent(text);
+  return digits ? `https://wa.me/${digits}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+};
+
 export function buildWhatsAppMessage(s: Sale): string {
   const end = warrantyEnd(s);
-  const fmtDate = (d: Date) =>
-    d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   const statusLine =
     s.paymentStatus === "paid"
       ? "✅ Paid"
@@ -113,15 +153,11 @@ export function buildWhatsAppMessage(s: Sale): string {
 }
 
 export function whatsAppUrl(s: Sale): string {
-  const phone = (s.customerNumber ?? "").replace(/[^0-9]/g, "");
-  const text = encodeURIComponent(buildWhatsAppMessage(s));
-  return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+  return waUrl(s.customerNumber, buildWhatsAppMessage(s));
 }
 
 export function buildReminderMessage(s: Sale): string {
   const due = balanceDue(s);
-  const fmtDate = (d: Date) =>
-    d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   const paid = s.amountPaid ?? 0;
   const lines = [
     `Hi${s.customerName ? ` ${s.customerName}` : ""},`,
@@ -139,7 +175,5 @@ export function buildReminderMessage(s: Sale): string {
 }
 
 export function reminderWhatsAppUrl(s: Sale): string {
-  const phone = (s.customerNumber ?? "").replace(/[^0-9]/g, "");
-  const text = encodeURIComponent(buildReminderMessage(s));
-  return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+  return waUrl(s.customerNumber, buildReminderMessage(s));
 }

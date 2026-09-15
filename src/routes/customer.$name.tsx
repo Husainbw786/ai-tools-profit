@@ -7,15 +7,8 @@ import { SaleDialog } from "@/components/SaleDialog";
 import { ContactEditor } from "@/components/ContactEditor";
 import { Card } from "@/components/ui/card";
 import { useSales } from "@/hooks/use-sales";
-import {
-  formatMoney,
-  formatPct,
-  lineCost,
-  lineTotal,
-  marginPct,
-  profit,
-  type Sale,
-} from "@/lib/sale-utils";
+import { formatMoney, formatPct, type Sale } from "@/lib/sale-utils";
+import { summarizeSales } from "@/lib/insights-utils";
 
 export const Route = createFileRoute("/customer/$name")({
   head: ({ params }) => ({
@@ -38,17 +31,7 @@ function CustomerPage() {
     [sales, decoded],
   );
 
-  const totals = useMemo(() => {
-    const revenue = customerSales.reduce((a, s) => a + lineTotal(s), 0);
-    const cost = customerSales.reduce((a, s) => a + lineCost(s), 0);
-    const totalProfit = customerSales.reduce((a, s) => a + profit(s), 0);
-    const avgMargin =
-      customerSales.length > 0
-        ? customerSales.reduce((a, s) => a + marginPct(s), 0) / customerSales.length
-        : 0;
-    const unpaid = customerSales.filter((s) => s.paymentStatus !== "paid").length;
-    return { revenue, cost, totalProfit, avgMargin, unpaid };
-  }, [customerSales]);
+  const totals = useMemo(() => summarizeSales(customerSales), [customerSales]);
 
   const phone = customerSales.find((s) => s.customerNumber)?.customerNumber ?? "";
 
@@ -108,22 +91,23 @@ function CustomerPage() {
             Total profit
           </div>
           <div className="mt-1 font-display text-lg font-semibold tracking-tight text-success">
-            {formatMoney(totals.totalProfit)}
+            {formatMoney(totals.profit)}
           </div>
         </Card>
         <Card className="border-border/70 bg-card p-3 shadow-[var(--shadow-soft)]">
           <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Avg margin
+            Margin
           </div>
           <div className="mt-1 font-display text-lg font-semibold tracking-tight">
-            {formatPct(totals.avgMargin)}
+            {formatPct(totals.marginPct)}
           </div>
         </Card>
       </div>
 
-      {totals.unpaid > 0 && (
+      {totals.unpaidCount > 0 && (
         <div className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          {totals.unpaid} sale{totals.unpaid === 1 ? "" : "s"} pending payment
+          {totals.unpaidCount} sale{totals.unpaidCount === 1 ? "" : "s"} pending payment ·{" "}
+          {formatMoney(totals.dueAmount)} due
         </div>
       )}
 

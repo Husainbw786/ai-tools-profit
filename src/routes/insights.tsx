@@ -38,6 +38,7 @@ import {
   groupByCustomer,
   groupByProduct,
   monthlyPnL,
+  summarizeSales,
   type Group,
 } from "@/lib/insights-utils";
 import { downloadFile, monthlyPnLToCSV, monthlyPnLToPDF } from "@/lib/exports";
@@ -79,17 +80,7 @@ function InsightsPage() {
   const byCustomer = useMemo(() => groupByCustomer(inRange), [inRange]);
   const byBuyer = useMemo(() => groupByBuyer(inRange), [inRange]);
   const pnl = useMemo(() => monthlyPnL(inRange), [inRange]);
-
-  const totals = pnl.reduce(
-    (acc, r) => {
-      acc.revenue += r.revenue;
-      acc.cost += r.cost;
-      acc.profit += r.profit;
-      acc.unpaidAmount += r.unpaidAmount;
-      return acc;
-    },
-    { revenue: 0, cost: 0, profit: 0, unpaidAmount: 0 },
-  );
+  const totals = useMemo(() => summarizeSales(inRange), [inRange]);
 
   const exportCSV = () => {
     downloadFile(
@@ -138,7 +129,7 @@ function InsightsPage() {
         />
         <SummaryCard
           label="Unpaid"
-          value={formatMoney(totals.unpaidAmount)}
+          value={formatMoney(totals.dueAmount)}
           accent="destructive"
         />
       </div>
@@ -194,9 +185,9 @@ function InsightsPage() {
                       {formatMoney(r.profit)}
                     </td>
                     <td className="py-2 text-right">
-                      {r.unpaidAmount > 0 ? (
+                      {r.dueAmount > 0 ? (
                         <span className="text-destructive">
-                          {formatMoney(r.unpaidAmount)}
+                          {formatMoney(r.dueAmount)}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>

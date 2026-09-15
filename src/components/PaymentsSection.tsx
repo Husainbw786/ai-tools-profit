@@ -13,7 +13,7 @@ import {
   useCreatePayment,
   useDeletePayment,
 } from "@/hooks/use-payments";
-import { formatMoney, lineTotal, type Sale } from "@/lib/sale-utils";
+import { balanceDue, formatMoney, lineTotal, type Sale } from "@/lib/sale-utils";
 
 export function PaymentsSection({ sale }: { sale: Sale }) {
   const { data: payments = [], isLoading } = usePaymentsForSale(sale.id);
@@ -21,7 +21,8 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
   const deleteMut = useDeletePayment(sale.id);
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-  const balance = Math.max(0, lineTotal(sale) - totalPaid);
+  // Use the freshly loaded payments rather than the server-aggregated amount.
+  const balance = balanceDue(sale, totalPaid);
 
   const [amount, setAmount] = useState<number>(0);
   const [paidAt, setPaidAt] = useState<Date>(new Date());

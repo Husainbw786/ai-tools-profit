@@ -8,7 +8,6 @@ import {
   isRefunded,
   marginPct,
   profit,
-  warrantyEnd,
   balanceDue,
   lineTotal,
   type Sale,
@@ -59,7 +58,6 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
       {sales.map((s) => {
         const expired = isExpired(s);
         const refunded = isRefunded(s);
-        const end = warrantyEnd(s);
         const days = daysRemaining(s);
         const p = profit(s);
         const m = marginPct(s);
@@ -174,8 +172,6 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
                   : `${days} D LEFT`}
               </span>
             </div>
-            {/* keep warrantyEnd ref to avoid unused */}
-            <span className="sr-only">{end.toISOString()}</span>
           </li>
         );
       })}

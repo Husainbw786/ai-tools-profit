@@ -21,7 +21,7 @@ export const backfillMyBackup = createServerFn({ method: "POST" })
 
     const paidBySale = new Map<string, number>();
     for (const p of payments ?? []) {
-      paidBySale.set(p.sale_id, (paidBySale.get(p.sale_id) ?? 0) + p.amount);
+      paidBySale.set(p.sale_id, (paidBySale.get(p.sale_id) ?? 0) + Number(p.amount));
     }
 
     let saleCount = 0;

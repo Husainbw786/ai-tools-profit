@@ -23,6 +23,8 @@ import {
   formatMoney,
   lineCost,
   lineTotal,
+  profit,
+  refundedAmount,
   warrantyEnd,
   whatsAppUrl,
   isRefunded,
@@ -638,10 +640,7 @@ function SaleView({
   const [showRefund, setShowRefund] = useState(false);
   const [refundAmt, setRefundAmt] = useState<number>(lineTotal(sale));
   const [refundReason, setRefundReason] = useState("");
-  const effectiveProfit =
-    (refunded
-      ? lineTotal(sale) - (sale.refundAmount ?? lineTotal(sale))
-      : lineTotal(sale)) - lineCost(sale);
+  const effectiveProfit = profit(sale);
   const submitRefund = async () => {
     try {
       await updateMut.mutateAsync({
@@ -720,7 +719,7 @@ function SaleView({
         </div>
         {refunded && (
           <div className="mt-2 rounded-md bg-destructive/10 px-2 py-1.5 text-center text-xs font-semibold text-destructive">
-            REFUNDED · {formatMoney(sale.refundAmount ?? lineTotal(sale))} returned
+            REFUNDED · {formatMoney(refundedAmount(sale))} returned
             {sale.refundedAt ? ` · ${format(new Date(sale.refundedAt), "PP")}` : ""}
           </div>
         )}
@@ -771,7 +770,7 @@ function SaleView({
             <div className="text-xs">
               <div className="font-semibold text-destructive">Refunded</div>
               <div className="text-muted-foreground">
-                {formatMoney(sale.refundAmount ?? lineTotal(sale))} returned to customer
+                {formatMoney(refundedAmount(sale))} returned to customer
                 {sale.refundReason ? ` · ${sale.refundReason}` : ""}
               </div>
             </div>

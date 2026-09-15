@@ -32,16 +32,14 @@ import { cn } from "@/lib/utils";
 import { useSales } from "@/hooks/use-sales";
 import { useMonthlyGoal } from "@/hooks/use-goal";
 import {
+  balanceDue,
   filterByRange,
   formatMoney,
   isExpired,
-  profit,
-  balanceDue,
-  lineTotal,
-  lineCost,
   type DateRange,
   type Sale,
 } from "@/lib/sale-utils";
+import { summarizeSales } from "@/lib/insights-utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -76,20 +74,24 @@ function Index() {
   }, [period, customFrom, customTo]);
 
   const inRange = useMemo(() => filterByRange(sales, range), [sales, range]);
-  const totalProfit = inRange.reduce((sum, s) => sum + profit(s), 0);
-  const totalRevenue = inRange.reduce((sum, s) => sum + lineTotal(s), 0);
-  const totalCost = inRange.reduce((sum, s) => sum + lineCost(s), 0);
-  const unpaidSales = sales.filter((s) => s.paymentStatus !== "paid");
-  const partialCount = unpaidSales.filter((s) => s.paymentStatus === "partial").length;
-  const unpaidOnlyCount = unpaidSales.filter((s) => s.paymentStatus === "unpaid").length;
-  const dueAmount = unpaidSales.reduce((a, s) => a + balanceDue(s), 0);
+  const totals = useMemo(() => summarizeSales(inRange), [inRange]);
+
+  // Dues are lifetime, not period-scoped: money owed is owed regardless of
+  // which period the dashboard is showing. Same definition as /collections.
+  const collections = useMemo(() => {
+    const owing = sales.filter((s) => balanceDue(s) > 0);
+    return {
+      dueAmount: owing.reduce((a, s) => a + balanceDue(s), 0),
+      partialCount: owing.filter((s) => s.paymentStatus === "partial").length,
+      unpaidCount: owing.filter((s) => s.paymentStatus !== "partial").length,
+    };
+  }, [sales]);
 
   const { goal, setGoal } = useMonthlyGoal();
-  const now = new Date();
   const thisMonthProfit = useMemo(() => {
+    const now = new Date();
     const monthRange = { from: startOfMonth(now), to: endOfMonth(now) };
-    return filterByRange(sales, monthRange).reduce((a, s) => a + profit(s), 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return summarizeSales(filterByRange(sales, monthRange)).profit;
   }, [sales]);
 
   const activeSales = useMemo(
@@ -147,7 +149,7 @@ function Index() {
             </span>
             <span className="font-display text-[2.75rem] font-bold leading-none tracking-tight md:text-5xl">
               {new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(
-                totalProfit,
+                totals.profit,
               )}
             </span>
           </div>
@@ -165,14 +167,14 @@ function Index() {
             className="my-5 border-t border-dashed border-white/15"
           />
           <div className="grid grid-cols-3 gap-3">
-            <HeroStat label="Revenue" value={formatMoney(totalRevenue)} />
-            <HeroStat label="Cost" value={formatMoney(totalCost)} />
+            <HeroStat label="Revenue" value={formatMoney(totals.revenue)} />
+            <HeroStat label="Cost" value={formatMoney(totals.cost)} />
             <HeroStat label="Sales" value={String(inRange.length)} />
           </div>
         </div>
       </Card>
 
-      {dueAmount > 0 && (
+      {collections.dueAmount > 0 && (
         <Link
           to="/collections"
           className="mt-4 flex items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 transition hover:bg-destructive/10"
@@ -182,11 +184,11 @@ function Index() {
           </span>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold text-destructive">
-              {formatMoney(dueAmount)}{" "}
+              {formatMoney(collections.dueAmount)}{" "}
               <span className="font-medium text-destructive/80">to collect</span>
             </div>
             <div className="text-[11px] text-destructive/70">
-              {unpaidOnlyCount} unpaid · {partialCount} partial
+              {collections.unpaidCount} unpaid · {collections.partialCount} partial
             </div>
           </div>
           <ChevronRight className="size-4 text-destructive/70" />
@@ -257,7 +259,7 @@ function GoalCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string>("");
-  const pct = goal > 0 ? Math.min(100, (thisMonthProfit / goal) * 100) : 0;
+  const pct = goal > 0 ? Math.min(100, Math.max(0, (thisMonthProfit / goal) * 100)) : 0;
   const reached = goal > 0 && thisMonthProfit >= goal;
 
   if (!goal && !editing) {

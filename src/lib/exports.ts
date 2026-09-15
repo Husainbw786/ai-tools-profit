@@ -14,7 +14,7 @@ export function monthlyPnLToCSV(rows: MonthRow[]): string {
     r.cost,
     r.profit,
     r.unpaidCount,
-    r.unpaidAmount,
+    r.dueAmount,
   ]);
   return [header, ...body].map((row) => row.map(toCSVCell).join(",")).join("\n");
 }
@@ -46,11 +46,11 @@ export async function monthlyPnLToPDF(rows: MonthRow[], filename: string) {
       acc.revenue += r.revenue;
       acc.cost += r.cost;
       acc.profit += r.profit;
-      acc.unpaidAmount += r.unpaidAmount;
+      acc.dueAmount += r.dueAmount;
       acc.count += r.count;
       return acc;
     },
-    { revenue: 0, cost: 0, profit: 0, unpaidAmount: 0, count: 0 },
+    { revenue: 0, cost: 0, profit: 0, dueAmount: 0, count: 0 },
   );
 
   const fmt = (n: number) => `Rs ${Math.round(n).toLocaleString("en-IN")}`;
@@ -64,7 +64,7 @@ export async function monthlyPnLToPDF(rows: MonthRow[], filename: string) {
       fmt(r.revenue),
       fmt(r.cost),
       fmt(r.profit),
-      r.unpaidAmount > 0 ? fmt(r.unpaidAmount) : "-",
+      r.dueAmount > 0 ? fmt(r.dueAmount) : "-",
     ]),
     foot: [[
       "Total",
@@ -72,7 +72,7 @@ export async function monthlyPnLToPDF(rows: MonthRow[], filename: string) {
       fmt(totals.revenue),
       fmt(totals.cost),
       fmt(totals.profit),
-      totals.unpaidAmount > 0 ? fmt(totals.unpaidAmount) : "-",
+      totals.dueAmount > 0 ? fmt(totals.dueAmount) : "-",
     ]],
     styles: { fontSize: 9 },
     headStyles: { fillColor: [30, 30, 40] },
