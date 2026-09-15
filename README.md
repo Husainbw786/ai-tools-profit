@@ -23,6 +23,19 @@ variables in `src/styles.css`; dark mode is the `.dark` class on `<html>`, persi
 `profitai-theme` localStorage key by `src/hooks/use-theme.ts`. Shared layout idioms (text tabs,
 chips, segmented pills, stat rules, underline search) live in `src/components/primitives.tsx`.
 
+### Put the server next to the database
+
+Server functions run as Vercel serverless functions in Vercel's default region (US East)
+unless told otherwise. Check your Supabase region under **Project Settings → General →
+Region** and add the matching Vercel region to `vercel.json`, for example Mumbai:
+
+```json
+{ "regions": ["bom1"] }
+```
+
+(Singapore is `sin1`, US East is `iad1`.) This removes an ocean round trip from every
+request.
+
 ## Build with Lovable
 
 Continue developing this project in the [Lovable editor](https://lovable.dev/projects/1a7e79b8-dadd-4434-9814-51f040fb5abe).

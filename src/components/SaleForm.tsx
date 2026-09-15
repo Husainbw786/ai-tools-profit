@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { SuggestInput, countOptions } from "@/components/SuggestInput";
 import { Kicker, SegmentedPill } from "@/components/primitives";
+import { Bone } from "@/components/skeletons";
+import { friendlyError } from "@/lib/request-error";
 import { cn } from "@/lib/utils";
 import { useCreateSale, useSales, useUpdateSale } from "@/hooks/use-sales";
 import { formatMoney, type PaymentStatus, type Sale } from "@/lib/sale-utils";
@@ -43,6 +44,10 @@ const emptyShared = () => ({
   paymentStatus: "paid" as PaymentStatus,
 });
 
+const Calendar = lazy(() =>
+  import("@/components/ui/calendar").then((m) => ({ default: m.Calendar })),
+);
+
 const numeric = (v: string) => {
   const digits = v.replace(/\D/g, "");
   return digits === "" ? 0 : Number(digits);
@@ -59,7 +64,15 @@ const PAY_OPTIONS: { id: PaymentStatus; label: string }[] = [
  * saved as separate sales sharing dealer, customer and dates; the amount
  * received is waterfalled across them.
  */
-export function SaleForm({ sale, onSaved }: { sale: Sale | null; onSaved: () => void }) {
+export function SaleForm({
+  sale,
+  onSaved,
+  onBusyChange,
+}: {
+  sale: Sale | null;
+  onSaved: () => void;
+  onBusyChange?: (busy: boolean) => void;
+}) {
   const [shared, setShared] = useState(() =>
     sale
       ? {
@@ -95,6 +108,10 @@ export function SaleForm({ sale, onSaved }: { sale: Sale | null; onSaved: () => 
   const updateMut = useUpdateSale();
   const { data: allSales = [] } = useSales();
   const busy = createMut.isPending || updateMut.isPending;
+  useEffect(() => {
+    onBusyChange?.(busy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy]);
 
   const productOpts = useMemo(() => countOptions(allSales.map((s) => s.productName)), [allSales]);
   const buyerOpts = useMemo(() => countOptions(allSales.map((s) => s.buyerName)), [allSales]);
@@ -201,11 +218,14 @@ export function SaleForm({ sale, onSaved }: { sale: Sale | null; onSaved: () => 
         });
         toast.success("Sale updated");
       } else {
+        // Waterfall the amount received across the products, then save them in
+        // parallel so a multi-product sale costs one round trip, not N.
         let remainingReceived = Math.min(amountReceived, totalRevenue);
-        for (const it of items) {
+        const inputs = items.map((it) => {
           const lineTotal = it.sellPrice * (it.quantity || 1);
           const initialPaymentAmount = Math.max(0, Math.min(remainingReceived, lineTotal));
-          await createMut.mutateAsync({
+          remainingReceived -= initialPaymentAmount;
+          return {
             ...shared,
             productName: it.productName.trim(),
             durationMonths: it.durationMonths,
@@ -214,14 +234,14 @@ export function SaleForm({ sale, onSaved }: { sale: Sale | null; onSaved: () => 
             sellPrice: it.sellPrice,
             hasWarranty: it.hasWarranty,
             initialPaymentAmount,
-          });
-          remainingReceived -= initialPaymentAmount;
-        }
+          };
+        });
+        await Promise.all(inputs.map((input) => createMut.mutateAsync(input)));
         toast.success(items.length > 1 ? `${items.length} sales added` : "Sale added");
       }
       onSaved();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Save failed");
+      toast.error(friendlyError(err, "Save failed. Please try again."));
     }
   };
 
@@ -329,13 +349,15 @@ export function SaleForm({ sale, onSaved }: { sale: Sale | null; onSaved: () => 
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={new Date(shared.warrantyStart)}
-              onSelect={(d) => d && setShared({ ...shared, warrantyStart: d.toISOString() })}
-              initialFocus
-              className={cn("pointer-events-auto p-3")}
-            />
+            <Suspense fallback={<Bone className="m-3 h-[300px] w-[260px]" />}>
+              <Calendar
+                mode="single"
+                selected={new Date(shared.warrantyStart)}
+                onSelect={(d) => d && setShared({ ...shared, warrantyStart: d.toISOString() })}
+                initialFocus
+                className={cn("pointer-events-auto p-3")}
+              />
+            </Suspense>
           </PopoverContent>
         </Popover>
 

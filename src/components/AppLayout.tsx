@@ -16,6 +16,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { SaleSheet } from "@/components/SaleSheet";
+import { DataStatus } from "@/components/DataStatus";
+import { Bone, SkeletonRows, SkeletonStats } from "@/components/skeletons";
 import { onNewSale, openNewSale } from "@/lib/new-sale-bus";
 
 const desktopNav = [
@@ -59,20 +61,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => onNewSale(() => setDialogOpen(true)), []);
 
-  if (loading || !session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-[14px] text-faint">
-        Loading…
-      </div>
-    );
-  }
-
   const signOut = async () => {
     await supabase.auth.signOut();
     navigate({ to: "/login" });
   };
 
   const moreActive = matches(pathname, MORE_PATHS);
+  const ready = !loading && !!session;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -137,7 +132,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl px-6 pb-[120px] md:pb-16 md:pt-4">{children}</main>
+      <main className="mx-auto w-full max-w-2xl px-6 pb-[120px] md:pb-16 md:pt-4">
+        {ready ? (
+          <>
+            <DataStatus />
+            {children}
+          </>
+        ) : (
+          <ShellSkeleton />
+        )}
+      </main>
 
       {/* Mobile bottom navigation: 5 columns, icons only, centre FAB. */}
       <nav
@@ -170,7 +174,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <SaleSheet open={dialogOpen} onOpenChange={setDialogOpen} sale={null} />
+      {ready && <SaleSheet open={dialogOpen} onOpenChange={setDialogOpen} sale={null} />}
+    </div>
+  );
+}
+
+/** What SSR emits and what the user sees while the session is being restored. */
+function ShellSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading your ledger">
+      <div className="flex items-center justify-between pt-5 md:pt-2">
+        <Bone className="size-9 rounded-full" />
+        <Bone className="h-9 w-[110px] rounded-full" />
+      </div>
+      <Bone className="mt-[34px] h-[13px] w-[72px]" />
+      <Bone className="mt-3 h-[54px] w-[220px] rounded-[12px]" />
+      <Bone className="mt-3 h-[13px] w-[180px]" />
+      <SkeletonStats className="mt-8" />
+      <SkeletonRows className="mt-6" count={3} />
     </div>
   );
 }

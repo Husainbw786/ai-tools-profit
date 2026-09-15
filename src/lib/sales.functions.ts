@@ -71,14 +71,11 @@ export const listSales = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase } = context;
-    const { data, error } = await supabase
-      .from("sales")
-      .select("*")
-      .order("warranty_start", { ascending: false });
+    const [{ data, error }, { data: pays, error: payErr }] = await Promise.all([
+      supabase.from("sales").select("*").order("warranty_start", { ascending: false }),
+      supabase.from("sale_payments").select("sale_id, amount"),
+    ]);
     if (error) throw new Error(error.message);
-    const { data: pays, error: payErr } = await supabase
-      .from("sale_payments")
-      .select("sale_id, amount");
     if (payErr) throw new Error(payErr.message);
     const paidBySale = new Map<string, number>();
     for (const p of pays ?? []) {
@@ -117,9 +114,8 @@ export const createSale = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    let paymentRow: any = null;
     if (initialPayment > 0) {
-      const { data: payRow, error: paymentError } = await supabase
+      const { error: paymentError } = await supabase
         .from("sale_payments")
         .insert({
           user_id: userId,
@@ -132,16 +128,9 @@ export const createSale = createServerFn({ method: "POST" })
         .select("*")
         .single();
       if (paymentError) throw new Error(paymentError.message);
-      paymentRow = payRow;
     }
-    const { appendSaleRow, resolveTabName } = await import("@/lib/sheets.server");
-    const tab = await resolveTabName(userId);
-    await appendSaleRow(tab, row as any);
-    const backup = await import("@/lib/backup.server");
-    backup.withBackup(backup.upsertBackupSale(row, initialPayment), "upsertBackupSale");
-    if (paymentRow) {
-      backup.withBackup(backup.upsertBackupPayment(paymentRow), "upsertBackupPayment");
-    }
+    // Google Sheet and backup-DB copies are refreshed by `mirrorSale`, which the
+    // client calls after this returns, so the save never waits on them.
     return toDTO(row, initialPayment);
   });
 
@@ -177,11 +166,6 @@ export const updateSale = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    const { upsertSaleRow, resolveTabName } = await import("@/lib/sheets.server");
-    const tab = await resolveTabName((row as any).user_id);
-    await upsertSaleRow(tab, row as any);
-    const backup = await import("@/lib/backup.server");
-    backup.withBackup(backup.upsertBackupSale(row), "upsertBackupSale");
     return toDTO(row);
   });
 
@@ -190,20 +174,8 @@ export const deleteSale = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: existing } = await supabase
-      .from("sales")
-      .select("user_id")
-      .eq("id", data.id)
-      .single();
     const { error } = await supabase.from("sales").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
-    const backup = await import("@/lib/backup.server");
-    backup.withBackup(backup.deleteBackupSale(data.id), "deleteBackupSale");
-    if (existing?.user_id) {
-      const { deleteSaleRow, resolveTabName } = await import("@/lib/sheets.server");
-      const tab = await resolveTabName(existing.user_id);
-      await deleteSaleRow(tab, data.id);
-    }
     return { ok: true };
   });
 

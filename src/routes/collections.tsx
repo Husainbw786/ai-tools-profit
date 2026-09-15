@@ -5,6 +5,7 @@ import { MessageCircle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { BackLink, EmptyState, PageTitle } from "@/components/primitives";
+import { Bone, SkeletonRows } from "@/components/skeletons";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/hooks/use-sales";
 import {
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/collections")({
 });
 
 function CollectionsPage() {
-  const { data: sales = [], isLoading } = useSales();
+  const { data: sales = [], isPending } = useSales();
   const [editing, setEditing] = useState<Sale | null>(null);
 
   const unpaid = useMemo(
@@ -50,15 +51,20 @@ function CollectionsPage() {
       <div className="mt-[34px] text-[13px] font-semibold text-muted-foreground">
         Total outstanding
       </div>
-      <div className="text-hero mt-2 text-destructive">{formatMoney(totalDue)}</div>
+      {isPending ? (
+        <Bone className="mt-2 h-[54px] w-[200px] rounded-[12px]" />
+      ) : (
+        <div className="text-hero mt-2 text-destructive">{formatMoney(totalDue)}</div>
+      )}
       <div className="mt-2.5 text-[13px] text-muted-foreground">
-        across {unpaid.length} sale{unpaid.length === 1 ? "" : "s"} · {formatMoney(totalBilled)}{" "}
-        billed
+        {isPending
+          ? "Checking pending payments…"
+          : `across ${unpaid.length} sale${unpaid.length === 1 ? "" : "s"} · ${formatMoney(totalBilled)} billed`}
       </div>
 
       <ul className="mt-7 border-t border-border">
-        {isLoading ? (
-          <EmptyState>Loading…</EmptyState>
+        {isPending ? (
+          <SkeletonRows count={3} />
         ) : unpaid.length === 0 ? (
           <EmptyState>Nothing outstanding. You&apos;re all paid up.</EmptyState>
         ) : (

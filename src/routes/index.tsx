@@ -8,6 +8,7 @@ import { SalesList } from "@/components/SalesList";
 import { ProfitTrendChart } from "@/components/ProfitTrendChart";
 import { PeriodPopover } from "@/components/PeriodPopover";
 import { Stat, StatGrid } from "@/components/primitives";
+import { SkeletonChart, SkeletonHero, SkeletonRows, SkeletonStats } from "@/components/skeletons";
 import { useAuth } from "@/hooks/use-auth";
 import { useSales } from "@/hooks/use-sales";
 import { useMonthlyGoal } from "@/hooks/use-goal";
@@ -44,7 +45,7 @@ const PERIODS: { id: Period; label: string }[] = [
 ];
 
 function Index() {
-  const { data: sales = [] } = useSales();
+  const { data: sales = [], isPending } = useSales();
   const { user } = useAuth();
   const [period, setPeriod] = useState<Period>("lifetime");
   const [editing, setEditing] = useState<Sale | null>(null);
@@ -92,6 +93,28 @@ function Index() {
   );
 
   const initial = (user?.email?.[0] ?? "P").toUpperCase();
+
+  if (isPending) {
+    return (
+      <AppLayout>
+        <h1 className="sr-only">Dashboard</h1>
+        <div className="flex items-center justify-between pt-5 md:pt-2">
+          <Link
+            to="/more"
+            aria-label="More"
+            className="grid size-9 place-items-center rounded-full bg-primary text-[14px] font-extrabold text-white md:invisible"
+          >
+            {initial}
+          </Link>
+          <PeriodPopover options={PERIODS} value={period} onChange={setPeriod} />
+        </div>
+        <SkeletonHero className="mt-[34px]" />
+        <SkeletonStats className="mt-8" />
+        <SkeletonChart />
+        <SkeletonRows className="mt-8" count={3} />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

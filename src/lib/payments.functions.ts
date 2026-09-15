@@ -62,8 +62,6 @@ export const createPayment = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    const backup = await import("@/lib/backup.server");
-    backup.withBackup(backup.upsertBackupPayment(row), "upsertBackupPayment");
     return toDTO(row);
   });
 
@@ -73,7 +71,5 @@ export const deletePayment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("sale_payments").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
-    const backup = await import("@/lib/backup.server");
-    backup.withBackup(backup.deleteBackupPayment(data.id), "deleteBackupPayment");
     return { ok: true };
   });

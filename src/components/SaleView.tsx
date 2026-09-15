@@ -7,6 +7,7 @@ import { PaymentsSection } from "@/components/PaymentsSection";
 import { Stat, StatGrid, StatusDot } from "@/components/primitives";
 import { useDeleteSale, useUpdateSale } from "@/hooks/use-sales";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/request-error";
 import {
   balanceDue,
   daysRemaining,
@@ -57,7 +58,7 @@ export function SaleView({
       toast.success("Refund recorded");
       setShowRefund(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(friendlyError(e, "Could not record the refund."));
     }
   };
 
@@ -69,7 +70,7 @@ export function SaleView({
       });
       toast.success("Refund removed");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(friendlyError(e, "Could not undo the refund."));
     }
   };
 
@@ -83,7 +84,7 @@ export function SaleView({
       toast.success("Sale deleted");
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Delete failed");
+      toast.error(friendlyError(err, "Delete failed. Please try again."));
     }
   };
 

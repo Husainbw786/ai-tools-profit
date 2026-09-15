@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
 import { BackLink, PageTitle, UnderlineSearch } from "@/components/primitives";
+import { SkeletonRows } from "@/components/skeletons";
 import { useSales } from "@/hooks/use-sales";
 import { isExpired, warrantyEnd, type Sale } from "@/lib/sale-utils";
 
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/archive")({
 });
 
 function ArchivePage() {
-  const { data: sales = [], isLoading } = useSales();
+  const { data: sales = [], isPending } = useSales();
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Sale | null>(null);
 
@@ -52,11 +53,15 @@ function ArchivePage() {
       />
 
       <div className="mt-1.5">
-        <SalesList
-          sales={expired}
-          emptyText={isLoading ? "Loading…" : "Nothing archived yet."}
-          onRowClick={(s) => setEditing(s)}
-        />
+        {isPending ? (
+          <SkeletonRows count={5} />
+        ) : (
+          <SalesList
+            sales={expired}
+            emptyText="Nothing archived yet."
+            onRowClick={(s) => setEditing(s)}
+          />
+        )}
       </div>
 
       <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />

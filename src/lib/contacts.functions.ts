@@ -58,7 +58,5 @@ export const upsertContact = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    const backup = await import("@/lib/backup.server");
-    backup.withBackup(backup.upsertBackupContact(row), "upsertBackupContact");
     return toDTO(row);
   });

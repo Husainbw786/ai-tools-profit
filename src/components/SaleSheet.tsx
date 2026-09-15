@@ -23,9 +23,11 @@ type Props = {
  */
 export function SaleSheet({ open, onOpenChange, sale }: Props) {
   const [mode, setMode] = useState<"view" | "edit">(sale ? "view" : "edit");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (open) setMode(sale ? "view" : "edit");
+    if (!open) setBusy(false);
   }, [open, sale]);
 
   const isNew = !sale;
@@ -40,7 +42,15 @@ export function SaleSheet({ open, onOpenChange, sale }: Props) {
       : "Update this sale";
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
+    <Drawer
+      open={open}
+      onOpenChange={(o) => {
+        if (!o && busy) return; // keep the sheet up while a save is in flight
+        onOpenChange(o);
+      }}
+      dismissible={!busy}
+      repositionInputs={false}
+    >
       <DrawerContent>
         <DrawerHeader>
           <div className="min-w-0">
@@ -50,6 +60,7 @@ export function SaleSheet({ open, onOpenChange, sale }: Props) {
           <button
             type="button"
             onClick={() => onOpenChange(false)}
+            disabled={busy}
             aria-label="Close"
             className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground transition hover:text-foreground"
           >
@@ -67,6 +78,7 @@ export function SaleSheet({ open, onOpenChange, sale }: Props) {
             <SaleForm
               key={sale?.id ?? "new"}
               sale={sale ?? null}
+              onBusyChange={setBusy}
               onSaved={() => {
                 if (sale) setMode("view");
                 else onOpenChange(false);

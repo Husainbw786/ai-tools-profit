@@ -7,6 +7,7 @@ import { Chip } from "@/components/primitives";
 import { useContacts, useUpsertContact, findContact } from "@/hooks/use-contacts";
 import { TAG_PRESETS } from "@/lib/contacts-utils";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/request-error";
 
 export function ContactEditor({ kind, name }: { kind: "customer" | "dealer"; name: string }) {
   const { data: contacts = [] } = useContacts();
@@ -43,7 +44,7 @@ export function ContactEditor({ kind, name }: { kind: "customer" | "dealer"; nam
       });
       toast.success("Saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(friendlyError(e, "Save failed. Please try again."));
     }
   };
 

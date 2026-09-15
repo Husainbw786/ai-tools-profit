@@ -19,6 +19,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { friendlyError } from "@/lib/request-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -198,7 +199,7 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
       setEditing(null);
       toast.success(editing ? "Link updated" : "Link added");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+    onError: (e: unknown) => toast.error(friendlyError(e)),
   });
 
   const delMut = useMutation({
@@ -207,7 +208,7 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
       invalidate();
       toast.success("Link deleted");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+    onError: (e: unknown) => toast.error(friendlyError(e)),
   });
 
   if (isLoading || !data) {
@@ -443,7 +444,7 @@ function MembersDialog({
       setEmail("");
       toast.success(res.status === "added" ? "Member added" : "Invite sent (joins on next login)");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+    onError: (e: unknown) => toast.error(friendlyError(e)),
   });
 
   return (
@@ -632,7 +633,7 @@ function LedgerPanel({
       setEditing(null);
       toast.success(editing ? "Entry updated" : "Entry added");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+    onError: (e: unknown) => toast.error(friendlyError(e)),
   });
 
   const delMut = useMutation({
@@ -641,7 +642,7 @@ function LedgerPanel({
       invalidate();
       toast.success("Deleted");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+    onError: (e: unknown) => toast.error(friendlyError(e)),
   });
 
   if (isLoading || !data) {
