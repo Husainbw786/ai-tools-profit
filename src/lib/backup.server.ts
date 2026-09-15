@@ -65,9 +65,7 @@ export async function upsertBackupSale(row: any, amountPaid = 0) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
-  const { error } = await client
-    .from("sales_backup")
-    .upsert(payload, { onConflict: "id" });
+  const { error } = await client.from("sales_backup").upsert(payload, { onConflict: "id" });
   if (error) throw new Error(error.message);
 }
 
@@ -92,9 +90,7 @@ export async function upsertBackupPayment(row: any) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
-  const { error } = await client
-    .from("sale_payments_backup")
-    .upsert(payload, { onConflict: "id" });
+  const { error } = await client.from("sale_payments_backup").upsert(payload, { onConflict: "id" });
   if (error) throw new Error(error.message);
 }
 
@@ -119,9 +115,7 @@ export async function upsertBackupContact(row: any) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
-  const { error } = await client
-    .from("contacts_backup")
-    .upsert(payload, { onConflict: "id" });
+  const { error } = await client.from("contacts_backup").upsert(payload, { onConflict: "id" });
   if (error) throw new Error(error.message);
 }
 
@@ -136,4 +130,3 @@ export function withBackup<T>(promise: Promise<T>, label: string) {
   promise.catch((err) => logWarning(label, err));
   return promise;
 }
-
