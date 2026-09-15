@@ -12,6 +12,7 @@ import {
   Archive,
   RefreshCw,
   ChevronRight,
+  DatabaseBackup,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import { useContacts } from "@/hooks/use-contacts";
 import { supabase } from "@/integrations/supabase/client";
 import { balanceDue, formatMoney } from "@/lib/sale-utils";
 import { backfillSalesToSheet, isAdmin } from "@/lib/sales.functions";
+import { backfillMyBackup } from "@/lib/backup.functions";
 
 export const Route = createFileRoute("/more")({
   head: () => ({
@@ -65,6 +67,7 @@ function MorePage() {
 
   const isAdminFn = useServerFn(isAdmin);
   const backfillFn = useServerFn(backfillSalesToSheet);
+  const backupBackfillFn = useServerFn(backfillMyBackup);
   const { data: adminData } = useQuery({
     queryKey: ["is-admin"],
     queryFn: () => isAdminFn(),
@@ -74,6 +77,14 @@ function MorePage() {
     mutationFn: () => backfillFn(),
     onSuccess: (r) =>
       toast.success(`Synced ${r.total} sales across ${r.users} user(s)`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const backupBackfill = useMutation({
+    mutationFn: () => backupBackfillFn(),
+    onSuccess: (r) =>
+      toast.success(
+        `Backup synced: ${r.saleCount} sales, ${r.paymentCount} payments, ${r.contactCount} contacts`,
+      ),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -214,6 +225,28 @@ function MorePage() {
             <ChevronRight className="size-4 text-muted-foreground/60" />
           </button>
         )}
+        <button
+          type="button"
+          disabled={backupBackfill.isPending}
+          onClick={() => backupBackfill.mutate()}
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-secondary/50 disabled:opacity-60"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <DatabaseBackup
+              className={cn(
+                "size-4",
+                backupBackfill.isPending && "animate-spin",
+              )}
+            />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold">Sync to Backup DB</div>
+            <div className="text-[11px] text-muted-foreground">
+              Copy existing data to second Supabase project
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground/60" />
+        </button>
       </Card>
 
       <Button
