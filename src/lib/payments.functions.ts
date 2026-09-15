@@ -24,9 +24,7 @@ const toDTO = (row: any): PaymentDTO => ({
 
 export const listPaymentsForSale = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ saleId: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input: unknown) => z.object({ saleId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("sale_payments")
@@ -71,14 +69,9 @@ export const createPayment = createServerFn({ method: "POST" })
 
 export const deletePayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ id: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("sale_payments")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await context.supabase.from("sale_payments").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     const backup = await import("@/lib/backup.server");
     backup.withBackup(backup.deleteBackupPayment(data.id), "deleteBackupPayment");

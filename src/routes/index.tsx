@@ -1,44 +1,26 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
-import {
-  CalendarIcon,
-  ArrowUpRight,
-  ArrowUp,
-  AlertCircle,
-  Target,
-  Pencil,
-  Check,
-  ChevronRight,
-} from "lucide-react";
+import { differenceInCalendarDays, endOfMonth, format, startOfMonth, subMonths } from "date-fns";
+import { ArrowRight, ArrowUp } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { SaleDialog } from "@/components/SaleDialog";
+import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
 import { ProfitTrendChart } from "@/components/ProfitTrendChart";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { PeriodPopover } from "@/components/PeriodPopover";
+import { Stat, StatGrid } from "@/components/primitives";
+import { useAuth } from "@/hooks/use-auth";
 import { useSales } from "@/hooks/use-sales";
 import { useMonthlyGoal } from "@/hooks/use-goal";
+import { cn } from "@/lib/utils";
 import {
+  balanceDue,
+  effectiveRevenue,
   filterByRange,
   formatMoney,
   isExpired,
-  profit,
-  balanceDue,
-  lineTotal,
+  isRefunded,
   lineCost,
+  profit,
   type DateRange,
   type Sale,
 } from "@/lib/sale-utils";
@@ -53,328 +35,216 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Period = "lifetime" | "this-month" | "last-month" | "custom";
+type Period = "lifetime" | "this-month" | "last-month";
+
+const PERIODS: { id: Period; label: string }[] = [
+  { id: "lifetime", label: "Lifetime" },
+  { id: "this-month", label: "This month" },
+  { id: "last-month", label: "Last month" },
+];
 
 function Index() {
   const { data: sales = [] } = useSales();
+  const { user } = useAuth();
   const [period, setPeriod] = useState<Period>("lifetime");
-  const [customFrom, setCustomFrom] = useState<Date | undefined>();
-  const [customTo, setCustomTo] = useState<Date | undefined>();
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Sale | null>(null);
 
+  const now = new Date();
   const range: DateRange | null = useMemo(() => {
-    const now = new Date();
     if (period === "this-month") return { from: startOfMonth(now), to: endOfMonth(now) };
     if (period === "last-month") {
       const lm = subMonths(now, 1);
       return { from: startOfMonth(lm), to: endOfMonth(lm) };
     }
-    if (period === "custom" && customFrom && customTo)
-      return { from: customFrom, to: customTo };
     return null;
-  }, [period, customFrom, customTo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
 
   const inRange = useMemo(() => filterByRange(sales, range), [sales, range]);
   const totalProfit = inRange.reduce((sum, s) => sum + profit(s), 0);
-  const totalRevenue = inRange.reduce((sum, s) => sum + lineTotal(s), 0);
+  const totalRevenue = inRange.reduce((sum, s) => sum + effectiveRevenue(s), 0);
   const totalCost = inRange.reduce((sum, s) => sum + lineCost(s), 0);
-  const unpaidSales = sales.filter((s) => s.paymentStatus !== "paid");
-  const partialCount = unpaidSales.filter((s) => s.paymentStatus === "partial").length;
-  const unpaidOnlyCount = unpaidSales.filter((s) => s.paymentStatus === "unpaid").length;
-  const dueAmount = unpaidSales.reduce((a, s) => a + balanceDue(s), 0);
+
+  const unpaid = useMemo(() => sales.filter((s) => balanceDue(s) > 0 && !isRefunded(s)), [sales]);
+  const dueAmount = unpaid.reduce((a, s) => a + balanceDue(s), 0);
+  const unpaidOnlyCount = unpaid.filter((s) => s.paymentStatus === "unpaid").length;
+  const partialCount = unpaid.filter((s) => s.paymentStatus === "partial").length;
+  const oldestDays = unpaid.length
+    ? Math.max(...unpaid.map((s) => differenceInCalendarDays(now, new Date(s.warrantyStart))))
+    : 0;
 
   const { goal, setGoal } = useMonthlyGoal();
-  const now = new Date();
-  const thisMonthProfit = useMemo(() => {
-    const monthRange = { from: startOfMonth(now), to: endOfMonth(now) };
-    return filterByRange(sales, monthRange).reduce((a, s) => a + profit(s), 0);
+  const thisMonthProfit = useMemo(
+    () =>
+      filterByRange(sales, { from: startOfMonth(now), to: endOfMonth(now) }).reduce(
+        (a, s) => a + profit(s),
+        0,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sales]);
-
-  const activeSales = useMemo(
-    () => sales.filter((s: Sale) => !isExpired(s)).slice(0, 5),
     [sales],
   );
+  const goalPct = goal > 0 ? Math.min(100, (thisMonthProfit / goal) * 100) : 0;
 
-  const periodLabel = {
-    lifetime: "Lifetime",
-    "this-month": "This month",
-    "last-month": "Last month",
-    custom: "Custom range",
-  }[period];
-
-  const periodSelect = (
-    <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-      <SelectTrigger className="h-9 rounded-full border-border/70 bg-card px-3 text-xs font-semibold shadow-[var(--shadow-soft)]">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="lifetime">Lifetime</SelectItem>
-        <SelectItem value="this-month">This month</SelectItem>
-        <SelectItem value="last-month">Last month</SelectItem>
-        <SelectItem value="custom">Custom range</SelectItem>
-      </SelectContent>
-    </Select>
+  const active = useMemo(() => sales.filter((s) => !isExpired(s)), [sales]);
+  const recent = useMemo(
+    () => [...active].sort((a, b) => b.warrantyStart.localeCompare(a.warrantyStart)).slice(0, 4),
+    [active],
   );
 
+  const initial = (user?.email?.[0] ?? "P").toUpperCase();
+
   return (
-    <AppLayout rightSlot={periodSelect}>
+    <AppLayout>
       <h1 className="sr-only">Dashboard</h1>
 
-      <Card
-        className="relative overflow-hidden border-0 p-0 text-primary-foreground shadow-[var(--shadow-elegant)]"
-        style={{ backgroundImage: "var(--gradient-hero)" }}
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 -top-16 size-72 rounded-full opacity-50 blur-3xl"
-          style={{ background: "var(--primary)" }}
-        />
-        <div className="relative p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--primary-glow)]">
-              <ArrowUp className="size-3" strokeWidth={3} />
-              Net profit
-            </div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">
-              {periodLabel}
-            </div>
-          </div>
-          <div className="mt-4 flex items-baseline gap-1.5">
-            <span className="font-display text-3xl font-bold leading-none text-[color:var(--primary-glow)]">
-              ₹
-            </span>
-            <span className="font-display text-[2.75rem] font-bold leading-none tracking-tight md:text-5xl">
-              {new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(
-                totalProfit,
-              )}
-            </span>
-          </div>
-          <div className="mt-3 text-xs text-white/70">
-            From {inRange.length} sale{inRange.length === 1 ? "" : "s"} this period
-          </div>
-          {period === "custom" && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <DateBtn date={customFrom} onChange={setCustomFrom} label="From" />
-              <DateBtn date={customTo} onChange={setCustomTo} label="To" />
-            </div>
-          )}
-          <div
-            aria-hidden
-            className="my-5 border-t border-dashed border-white/15"
-          />
-          <div className="grid grid-cols-3 gap-3">
-            <HeroStat label="Revenue" value={formatMoney(totalRevenue)} />
-            <HeroStat label="Cost" value={formatMoney(totalCost)} />
-            <HeroStat label="Sales" value={String(inRange.length)} />
-          </div>
-        </div>
-      </Card>
+      <div className="flex items-center justify-between pt-5 md:pt-2">
+        <Link
+          to="/more"
+          aria-label="More"
+          className="grid size-9 place-items-center rounded-full bg-primary text-[14px] font-extrabold text-white md:invisible"
+        >
+          {initial}
+        </Link>
+        <PeriodPopover options={PERIODS} value={period} onChange={setPeriod} />
+      </div>
+
+      <div className="mt-[34px] text-[13px] font-semibold text-muted-foreground">Net profit</div>
+      <div className="text-hero mt-2">{formatMoney(totalProfit)}</div>
+      <div className="mt-3 inline-flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-accent-text">
+        <ArrowUp className="size-3.5" strokeWidth={2.5} />
+        {formatMoney(thisMonthProfit)} this month
+        {goal > 0 && (
+          <span className="font-medium text-faint">· {goalPct.toFixed(0)}% of goal</span>
+        )}
+      </div>
+
+      <StatGrid cols={3} className="mt-8">
+        <Stat label="Revenue" value={formatMoney(totalRevenue)} />
+        <Stat label="Cost" value={formatMoney(totalCost)} />
+        <Stat label="Sales" value={inRange.length} />
+      </StatGrid>
 
       {dueAmount > 0 && (
         <Link
           to="/collections"
-          className="mt-4 flex items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 transition hover:bg-destructive/10"
+          className="flex items-center justify-between gap-3 border-b border-border py-[18px]"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-destructive/15 text-destructive">
-            <AlertCircle className="size-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-destructive">
-              {formatMoney(dueAmount)}{" "}
-              <span className="font-medium text-destructive/80">to collect</span>
-            </div>
-            <div className="text-[11px] text-destructive/70">
-              {unpaidOnlyCount} unpaid · {partialCount} partial
+          <div className="min-w-0">
+            <div className="tabular text-[15px] font-bold">{formatMoney(dueAmount)} to collect</div>
+            <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
+              {unpaidOnlyCount} unpaid · {partialCount} partial · oldest {oldestDays} days
             </div>
           </div>
-          <ChevronRight className="size-4 text-destructive/70" />
+          <span className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-[12px] font-bold text-white">
+            Remind
+          </span>
         </Link>
       )}
 
-      <div className="mt-4">
-        <ProfitTrendChart sales={sales} />
-      </div>
+      <ProfitTrendChart sales={sales} />
 
-      <GoalCard
-        goal={goal}
-        setGoal={setGoal}
-        thisMonthProfit={thisMonthProfit}
-      />
+      <GoalBlock goal={goal} setGoal={setGoal} earned={thisMonthProfit} pct={goalPct} />
 
-      <div className="mt-7 flex items-end justify-between">
-        <div>
-          <h2 className="font-display text-xl font-bold tracking-tight">
-            Recent active
-          </h2>
-          <p className="text-xs text-muted-foreground">Still under warranty</p>
-        </div>
+      <div className="mt-[30px] flex items-baseline justify-between">
+        <h2 className="text-section">Active</h2>
         <Link
           to="/sales"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+          className="inline-flex items-center gap-1 text-[13px] font-semibold text-muted-foreground transition hover:text-foreground"
         >
-          See all <ArrowUpRight className="size-3" />
+          {active.length} <ArrowRight className="size-3.5" />
         </Link>
       </div>
-      <div className="mt-4">
+      <div className="mt-1">
         <SalesList
-          sales={activeSales}
-          emptyText="No active sales. Add your first one."
-          onRowClick={(s) => {
-            setEditing(s);
-            setDialogOpen(true);
-          }}
+          sales={recent}
+          emptyText="No active sales. Tap + to add your first one."
+          onRowClick={(s) => setEditing(s)}
         />
       </div>
 
-      <SaleDialog open={dialogOpen} onOpenChange={setDialogOpen} sale={editing} />
+      <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />
     </AppLayout>
   );
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/55">
-        {label}
-      </div>
-      <div className="mt-1 truncate font-display text-base font-bold tracking-tight">
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function GoalCard({
+function GoalBlock({
   goal,
   setGoal,
-  thisMonthProfit,
+  earned,
+  pct,
 }: {
   goal: number;
   setGoal: (n: number) => void;
-  thisMonthProfit: number;
+  earned: number;
+  pct: number;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<string>("");
-  const pct = goal > 0 ? Math.min(100, (thisMonthProfit / goal) * 100) : 0;
-  const reached = goal > 0 && thisMonthProfit >= goal;
+  const [draft, setDraft] = useState("");
+  const month = format(new Date(), "MMMM");
+  const reached = goal > 0 && earned >= goal;
 
-  if (!goal && !editing) {
-    return (
-      <Card className="mt-4 flex items-center justify-between gap-3 border-dashed p-4">
-        <div className="flex items-center gap-2">
-          <Target className="size-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            Set a monthly profit goal
+  const save = () => {
+    setGoal(Number(draft) || 0);
+    setEditing(false);
+  };
+
+  return (
+    <div className="mt-7 border-y border-border py-[18px]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[13px] font-semibold text-muted-foreground">{month} goal</span>
+        {editing ? (
+          <span className="flex gap-1.5">
+            <input
+              autoFocus
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={draft}
+              placeholder="e.g. 15000"
+              onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
+              onKeyDown={(e) => e.key === "Enter" && save()}
+              className="tabular h-8 w-[110px] rounded-[8px] border border-border bg-transparent px-2.5 text-[13px] font-bold text-foreground outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={save}
+              className="h-8 rounded-[8px] bg-primary px-3 text-[12px] font-bold text-white"
+            >
+              Save
+            </button>
           </span>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => { setDraft(""); setEditing(true); }}>
-          Set goal
-        </Button>
-      </Card>
-    );
-  }
-
-  if (editing) {
-    return (
-      <Card className="mt-4 p-4">
-        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          <Target className="size-3.5" /> Monthly profit goal
-        </div>
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            placeholder="e.g. 50000"
-            value={draft}
-            autoFocus
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
-          />
-          <Button
-            size="sm"
+        ) : (
+          <button
+            type="button"
             onClick={() => {
-              setGoal(Number(draft) || 0);
-              setEditing(false);
+              setDraft(goal ? String(goal) : "");
+              setEditing(true);
             }}
+            className="tabular text-[13px] font-bold"
           >
-            <Check className="size-4" />
-          </Button>
-        </div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="mt-4 border-border/70 p-4 shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          <span className="grid size-6 place-items-center rounded-full bg-primary/15 text-primary">
-            <Target className="size-3.5" />
-          </span>
-          Monthly goal
-        </div>
-        <button
-          type="button"
-          onClick={() => { setDraft(String(goal)); setEditing(true); }}
-          className="rounded-full p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-          aria-label="Edit goal"
-        >
-          <Pencil className="size-3.5" />
-        </button>
+            {goal > 0 ? (
+              <>
+                {formatMoney(earned)}{" "}
+                <span className="font-semibold text-faint">/ {formatMoney(goal)} ✎</span>
+              </>
+            ) : (
+              <span className="font-semibold text-accent-text">Set a goal ✎</span>
+            )}
+          </button>
+        )}
       </div>
-      <div className="mt-2 text-xs font-semibold text-muted-foreground">
-        <span className="font-display text-base text-foreground">
-          {formatMoney(thisMonthProfit)}
-        </span>{" "}
-        / {formatMoney(goal)}
-      </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
+      <div className="mt-3.5 h-1 overflow-hidden rounded-full bg-hairline">
         <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            reached ? "bg-success" : "bg-primary",
-          )}
-          style={{ width: `${pct}%` }}
+          className={cn("h-full rounded-full bg-primary transition-[width]")}
+          style={{ width: `${goal > 0 ? pct : 0}%` }}
         />
       </div>
-      <div className="mt-2 text-[11px] text-muted-foreground">
-        {reached
-          ? "Goal reached 🎉"
-          : `${pct.toFixed(0)}% there — ${formatMoney(Math.max(0, goal - thisMonthProfit))} to go in ${format(new Date(), "MMMM")}`}
+      <div className="mt-2 text-[12px] text-muted-foreground">
+        {goal <= 0
+          ? "Set a monthly profit goal to track progress."
+          : reached
+            ? "Goal reached"
+            : `${pct.toFixed(0)}% there — ${formatMoney(Math.max(0, goal - earned))} to go in ${month}`}
       </div>
-    </Card>
-  );
-}
-
-function DateBtn({
-  date,
-  onChange,
-  label,
-}: {
-  date: Date | undefined;
-  onChange: (d: Date | undefined) => void;
-  label: string;
-}) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn("font-normal")}>
-          <CalendarIcon className="mr-2 size-3.5" />
-          {date ? format(date, "PP") : label}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={onChange}
-          initialFocus
-          className={cn("p-3 pointer-events-auto")}
-        />
-      </PopoverContent>
-    </Popover>
+    </div>
   );
 }

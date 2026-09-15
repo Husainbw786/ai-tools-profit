@@ -82,18 +82,16 @@ function LinksPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="mt-7 space-y-6">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Shared Links</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-title">Shared links</h1>
+          <p className="mt-2 text-[14px] text-muted-foreground">
             Collaborate on links with people you invite. Your sales data stays private.
           </p>
         </div>
 
         {isLoading || !hub ? (
-          <div className="rounded-2xl border border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
-            Loading workspace…
-          </div>
+          <div className="py-[60px] text-center text-[14px] text-faint">Loading workspace…</div>
         ) : (
           <Tabs
             value={currentId === hub.myWorkspace.id ? "mine" : "shared"}
@@ -117,7 +115,7 @@ function LinksPage() {
             </TabsContent>
             <TabsContent value="shared" className="mt-4">
               {hub.shared.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
+                <div className="py-[60px] text-center text-[14px] text-faint">
                   No one has invited you yet. When they do, the space will show up here.
                 </div>
               ) : (
@@ -127,14 +125,14 @@ function LinksPage() {
                       <button
                         key={s.id}
                         onClick={() => setActiveWsId(s.id)}
-                        className={`rounded-xl border p-4 text-left transition ${
+                        className={`rounded-[14px] border p-4 text-left transition ${
                           activeWsId === s.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border/70 bg-card hover:border-primary/40"
+                            ? "border-foreground"
+                            : "border-border hover:border-muted-foreground"
                         }`}
                       >
-                        <div className="font-medium">{s.name}</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
+                        <div className="text-[15px] font-bold">{s.name}</div>
+                        <div className="mt-1 text-[12px] text-muted-foreground">
                           You're a {s.role}
                         </div>
                       </button>
@@ -171,8 +169,7 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
   const updFn = useServerFn(updateLink);
   const delFn = useServerFn(deleteLink);
 
-  const invalidate = () =>
-    qc.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["workspace", workspaceId] });
 
   const saveMut = useMutation({
     mutationFn: async (input: { title: string; url: string; note: string }) => {
@@ -214,11 +211,7 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
   });
 
   if (isLoading || !data) {
-    return (
-      <div className="rounded-2xl border border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
-        Loading…
-      </div>
-    );
+    return <div className="py-[60px] text-center text-[14px] text-faint">Loading…</div>;
   }
 
   const canEdit = data.myRole === "owner" || data.myRole === "editor";
@@ -226,12 +219,12 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-card p-4">
+      <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
-          <div className="font-display text-lg font-semibold">{data.workspace.name}</div>
-          <div className="text-xs text-muted-foreground">
-            {data.members.length} member{data.members.length === 1 ? "" : "s"} ·
-            you are {data.myRole}
+          <div className="text-section">{data.workspace.name}</div>
+          <div className="mt-1 text-[12px] text-muted-foreground">
+            {data.members.length} member{data.members.length === 1 ? "" : "s"} · you are{" "}
+            {data.myRole}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -265,73 +258,66 @@ function WorkspaceView({ workspaceId }: { workspaceId: string }) {
             </div>
           )}
           {data.links.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card p-10 text-center text-sm text-muted-foreground">
-          <Link2 className="mx-auto mb-2 size-6 opacity-60" />
-          No links yet. {canEdit && "Add one to get started."}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {data.links.map((l) => (
-            <div
-              key={l.id}
-              className="rounded-xl border border-border/70 bg-card p-3.5 transition hover:border-primary/40"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <a
-                    href={l.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group inline-flex items-center gap-1.5 font-medium text-foreground hover:text-primary"
-                  >
-                    {l.title}
-                    <ExternalLink className="size-3.5 opacity-60 group-hover:opacity-100" />
-                  </a>
-                  <div className="truncate text-xs text-muted-foreground">{l.url}</div>
-                  {l.note && (
-                    <div className="mt-1.5 text-sm text-muted-foreground">{l.note}</div>
-                  )}
-                  <div className="mt-2 text-[11px] uppercase tracking-wider text-muted-foreground/70">
-                    by {l.createdByEmail || "unknown"}
+            <div className="py-[60px] text-center text-[14px] text-faint">
+              <Link2 className="mx-auto mb-2 size-6 opacity-60" />
+              No links yet. {canEdit && "Add one to get started."}
+            </div>
+          ) : (
+            <div>
+              {data.links.map((l) => (
+                <div key={l.id} className="border-b border-hairline py-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <a
+                        href={l.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group inline-flex items-center gap-1.5 text-[15px] font-bold text-foreground hover:text-accent-text"
+                      >
+                        {l.title}
+                        <ExternalLink className="size-3.5 opacity-60 group-hover:opacity-100" />
+                      </a>
+                      <div className="truncate text-[12px] text-muted-foreground">{l.url}</div>
+                      {l.note && (
+                        <div className="mt-1.5 text-[13px] text-muted-foreground">{l.note}</div>
+                      )}
+                      <div className="mt-2 text-[11px] font-semibold text-faint">
+                        by {l.createdByEmail || "unknown"}
+                      </div>
+                    </div>
+                    {canEdit && (
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          onClick={() => {
+                            setEditing(l);
+                            setLinkDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-destructive"
+                          onClick={() => {
+                            if (confirm("Delete this link?")) delMut.mutate(l.id);
+                          }}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
-                {canEdit && (
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      onClick={() => {
-                        setEditing(l);
-                        setLinkDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-destructive"
-                      onClick={() => {
-                        if (confirm("Delete this link?")) delMut.mutate(l.id);
-                      }}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
           )}
         </TabsContent>
         <TabsContent value="ledger" className="mt-4">
-          <LedgerPanel
-            workspaceId={workspaceId}
-            members={data.members}
-            canEdit={canEdit}
-          />
+          <LedgerPanel workspaceId={workspaceId} members={data.members} canEdit={canEdit} />
         </TabsContent>
       </Tabs>
 
@@ -468,10 +454,8 @@ function MembersDialog({
         </DialogHeader>
 
         {isOwner && (
-          <div className="rounded-xl border border-border/70 bg-secondary/40 p-3">
-            <div className="mb-2 text-xs font-medium text-muted-foreground">
-              Invite by email
-            </div>
+          <div className="border-b border-border pb-4">
+            <div className="mb-2 text-[12px] font-bold text-muted-foreground">Invite by email</div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 type="email"
@@ -500,15 +484,15 @@ function MembersDialog({
         )}
 
         <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">Members</div>
+          <div className="text-[12px] font-bold text-muted-foreground">Members</div>
           {members.map((m) => (
             <div
               key={m.id}
-              className="flex items-center justify-between rounded-lg border border-border/60 bg-card p-2.5"
+              className="flex items-center justify-between border-b border-hairline py-2.5"
             >
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 truncate text-sm font-medium">
-                  {m.role === "owner" && <Crown className="size-3.5 text-primary" />}
+                <div className="flex items-center gap-1.5 truncate text-[14px] font-bold">
+                  {m.role === "owner" && <Crown className="size-3.5 text-accent-text" />}
                   {m.email || m.userId.slice(0, 8)}
                 </div>
               </div>
@@ -553,25 +537,21 @@ function MembersDialog({
 
         {isOwner && invites.length > 0 && (
           <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">
-              Pending invites
-            </div>
+            <div className="text-[12px] font-bold text-muted-foreground">Pending invites</div>
             {invites.map((i) => (
               <div
                 key={i.id}
-                className="flex items-center justify-between rounded-lg border border-dashed border-border/60 bg-card p-2.5"
+                className="flex items-center justify-between border-b border-hairline py-2.5"
               >
-                <div className="text-sm">
+                <div className="text-[14px]">
                   {i.email}
-                  <span className="ml-2 text-xs text-muted-foreground">({i.role})</span>
+                  <span className="ml-2 text-[12px] text-muted-foreground">({i.role})</span>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="size-7 text-destructive"
-                  onClick={() =>
-                    revFn({ data: { inviteId: i.id } }).then(() => onChanged())
-                  }
+                  onClick={() => revFn({ data: { inviteId: i.id } }).then(() => onChanged())}
                 >
                   <X className="size-3.5" />
                 </Button>
@@ -665,11 +645,7 @@ function LedgerPanel({
   });
 
   if (isLoading || !data) {
-    return (
-      <div className="rounded-2xl border border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
-        Loading ledger…
-      </div>
-    );
+    return <div className="py-[60px] text-center text-[14px] text-faint">Loading ledger…</div>;
   }
 
   const viewerId = data.viewerUserId;
@@ -686,19 +662,15 @@ function LedgerPanel({
 
   return (
     <div className="space-y-4">
-      <div
-        className={`rounded-2xl border p-5 ${
-          net === 0
-            ? "border-border/70 bg-card"
-            : net > 0
-              ? "border-emerald-500/40 bg-emerald-500/5"
-              : "border-destructive/40 bg-destructive/5"
-        }`}
-      >
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">
-          Net balance
+      <div className="border-b border-border pb-5">
+        <div className="text-[13px] font-semibold text-muted-foreground">Net balance</div>
+        <div
+          className={`mt-2 font-display text-[28px] font-medium leading-tight tracking-[-0.02em] ${
+            net === 0 ? "" : net > 0 ? "text-success" : "text-destructive"
+          }`}
+        >
+          {balanceLine}
         </div>
-        <div className="mt-1 font-display text-2xl font-semibold">{balanceLine}</div>
       </div>
 
       {canEdit && (
@@ -716,38 +688,29 @@ function LedgerPanel({
       )}
 
       {data.entries.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card p-10 text-center text-sm text-muted-foreground">
+        <div className="py-[60px] text-center text-[14px] text-faint">
           <Scale className="mx-auto mb-2 size-6 opacity-60" />
           No entries yet. {canEdit && "Add the first one."}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div>
           {data.entries.map((e) => {
             const youPaid = e.payerUserId === viewerId;
-            const payerName = youPaid
-              ? "You"
-              : (e.payerEmail?.split("@")[0] || "them");
+            const payerName = youPaid ? "You" : e.payerEmail?.split("@")[0] || "them";
             const isSettle = e.kind === "settlement";
             return (
-              <div
-                key={e.id}
-                className={`rounded-xl border p-3.5 transition ${
-                  isSettle
-                    ? "border-primary/30 bg-primary/5"
-                    : "border-border/70 bg-card hover:border-primary/40"
-                }`}
-              >
+              <div key={e.id} className="border-b border-hairline py-3.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       {isSettle ? (
-                        <CheckCircle2 className="size-4 text-primary" />
+                        <CheckCircle2 className="size-4 text-accent-text" />
                       ) : youPaid ? (
-                        <ArrowUpRight className="size-4 text-emerald-500" />
+                        <ArrowUpRight className="size-4 text-success" />
                       ) : (
                         <ArrowDownLeft className="size-4 text-destructive" />
                       )}
-                      <span className="font-medium">
+                      <span className="text-[15px] font-bold">
                         {payerName} paid ₹{formatRupees(e.amountCents)}
                       </span>
                       {isSettle && (
@@ -757,9 +720,9 @@ function LedgerPanel({
                       )}
                     </div>
                     {e.note && (
-                      <div className="mt-1.5 text-sm text-muted-foreground">{e.note}</div>
+                      <div className="mt-1.5 text-[13px] text-muted-foreground">{e.note}</div>
                     )}
-                    <div className="mt-1.5 text-[11px] uppercase tracking-wider text-muted-foreground/70">
+                    <div className="mt-1.5 text-[11px] font-semibold text-faint">
                       {e.entryDate} · by {e.createdByEmail || "unknown"}
                     </div>
                   </div>
@@ -881,9 +844,7 @@ function LedgerEntryDialog({
               <SelectContent>
                 {members.map((m) => (
                   <SelectItem key={m.userId} value={m.userId}>
-                    {m.userId === viewerId
-                      ? "You"
-                      : m.email || m.userId.slice(0, 8)}
+                    {m.userId === viewerId ? "You" : m.email || m.userId.slice(0, 8)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -903,11 +864,7 @@ function LedgerEntryDialog({
           </div>
           <div>
             <Label>Date</Label>
-            <Input
-              type="date"
-              value={entryDate}
-              onChange={(e) => setEntryDate(e.target.value)}
-            />
+            <Input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
           </div>
           <div>
             <Label>Note (optional)</Label>

@@ -1,17 +1,14 @@
-import { useMemo } from "react";
-import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from "recharts";
+import { useMemo, useState } from "react";
 import { format, startOfMonth, subMonths } from "date-fns";
-import { Card } from "@/components/ui/card";
-import { formatMoney, profit, type Sale } from "@/lib/sale-utils";
+import { cn } from "@/lib/utils";
+import { formatCompactMoney, formatMoney, profit, type Sale } from "@/lib/sale-utils";
 
 type Props = { sales: Sale[] };
 
+/**
+ * Six-month profit trend as tap-to-select bars. Default bar = chip colour,
+ * peak month = ink, selected month (defaults to the current one) = terracotta.
+ */
 export function ProfitTrendChart({ sales }: Props) {
   const data = useMemo(() => {
     const now = new Date();
@@ -28,77 +25,67 @@ export function ProfitTrendChart({ sales }: Props) {
     return buckets;
   }, [sales]);
 
+  const [selected, setSelected] = useState(5);
   const max = Math.max(1, ...data.map((d) => d.profit));
-  const hasData = data.some((d) => d.profit !== 0);
+  const peakValue = Math.max(...data.map((d) => d.profit));
+  const peakIndex = peakValue > 0 ? data.findIndex((d) => d.profit === peakValue) : -1;
 
   return (
-    <Card className="border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            Profit trend
-          </div>
-          <div className="mt-0.5 font-display text-base font-bold tracking-tight">
-            Last 6 months
-          </div>
-        </div>
-        <div className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-          Peak {formatMoney(max)}
-        </div>
+    <div className="pt-[22px]">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[13px] font-semibold text-muted-foreground">Last 6 months</span>
+        <span className="text-[12px] font-semibold text-faint">
+          {peakIndex >= 0
+            ? `Peak ${formatMoney(peakValue)} · ${data[peakIndex].label}`
+            : "No profit yet"}
+        </span>
       </div>
-      <div className="mt-2 h-40 w-full">
-        {hasData ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={data}
-              margin={{ top: 14, right: 8, left: 8, bottom: 0 }}
+      <div
+        role="group"
+        aria-label="Monthly profit, last six months"
+        className="mt-4 grid h-[132px] grid-cols-6 items-end gap-2.5"
+      >
+        {data.map((d, i) => {
+          const isSelected = selected === i;
+          const isPeak = i === peakIndex;
+          const pct = Math.max(4, (Math.max(0, d.profit) / max) * 100);
+          return (
+            <button
+              key={d.key}
+              type="button"
+              onClick={() => setSelected(i)}
+              aria-pressed={isSelected}
+              aria-label={`${d.label}: ${formatMoney(d.profit)}`}
+              className="flex h-full flex-col items-center justify-end"
             >
-              <defs>
-                <linearGradient id="profitFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                axisLine={false}
-                tickLine={false}
-                interval={0}
-                tickMargin={6}
+              <span
+                className={cn(
+                  "tabular mb-1.5 text-[11px] font-bold transition-opacity duration-150",
+                  isSelected ? "text-foreground" : "text-faint",
+                  isSelected || isPeak ? "opacity-100" : "opacity-0",
+                )}
+              >
+                {formatCompactMoney(d.profit)}
+              </span>
+              <span
+                className={cn(
+                  "w-full max-w-[34px] rounded-[8px_8px_4px_4px] transition-colors duration-150",
+                  isSelected ? "bg-primary" : isPeak ? "bg-foreground" : "bg-secondary",
+                )}
+                style={{ height: `calc((100% - 44px) * ${pct / 100})`, minHeight: 4 }}
               />
-              <Tooltip
-                cursor={{ stroke: "var(--primary)", strokeOpacity: 0.3 }}
-                contentStyle={{
-                  background: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 10,
-                  fontSize: 12,
-                }}
-                formatter={(v: number) => [formatMoney(v), "Profit"]}
-              />
-              <Area
-                type="monotone"
-                dataKey="profit"
-                stroke="var(--primary)"
-                strokeWidth={2.5}
-                fill="url(#profitFill)"
-                dot={false}
-                activeDot={{
-                  r: 5,
-                  fill: "var(--primary)",
-                  stroke: "var(--card)",
-                  strokeWidth: 3,
-                }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-            No data in the last 6 months
-          </div>
-        )}
+              <span
+                className={cn(
+                  "mt-2 text-[11px] font-bold",
+                  isSelected ? "text-foreground" : "text-faint",
+                )}
+              >
+                {d.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
-    </Card>
+    </div>
   );
 }

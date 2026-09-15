@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { differenceInCalendarDays } from "date-fns";
-import { MessageCircle, Wallet, AlertCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { SaleDialog } from "@/components/SaleDialog";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { SaleSheet } from "@/components/SaleSheet";
+import { BackLink, EmptyState, PageTitle } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/hooks/use-sales";
 import {
   balanceDue,
   formatMoney,
+  isRefunded,
   lineTotal,
   reminderWhatsAppUrl,
   type Sale,
@@ -19,7 +19,7 @@ import {
 export const Route = createFileRoute("/collections")({
   head: () => ({
     meta: [
-      { title: "Collections — ProfitAI" },
+      { title: "Dues — ProfitAI" },
       { name: "description", content: "All sales with pending dues." },
     ],
   }),
@@ -30,135 +30,91 @@ function CollectionsPage() {
   const { data: sales = [], isLoading } = useSales();
   const [editing, setEditing] = useState<Sale | null>(null);
 
-  const unpaid = useMemo(() => {
-    return sales
-      .filter((s) => balanceDue(s) > 0)
-      .sort(
-        (a, b) =>
-          new Date(a.warrantyStart).getTime() - new Date(b.warrantyStart).getTime(),
-      );
-  }, [sales]);
+  const unpaid = useMemo(
+    () =>
+      sales
+        .filter((s) => balanceDue(s) > 0 && !isRefunded(s))
+        .sort((a, b) => new Date(a.warrantyStart).getTime() - new Date(b.warrantyStart).getTime()),
+    [sales],
+  );
 
   const totalDue = unpaid.reduce((acc, s) => acc + balanceDue(s), 0);
   const totalBilled = unpaid.reduce((acc, s) => acc + lineTotal(s), 0);
+  const now = new Date();
 
   return (
     <AppLayout>
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            Collections
-          </h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Pending dues, oldest first
-          </p>
-        </div>
+      <BackLink to="/" className="mt-6" />
+      <PageTitle className="mt-4" title="Dues" sub="Pending payments, oldest first" />
+
+      <div className="mt-[34px] text-[13px] font-semibold text-muted-foreground">
+        Total outstanding
+      </div>
+      <div className="text-hero mt-2 text-destructive">{formatMoney(totalDue)}</div>
+      <div className="mt-2.5 text-[13px] text-muted-foreground">
+        across {unpaid.length} sale{unpaid.length === 1 ? "" : "s"} · {formatMoney(totalBilled)}{" "}
+        billed
       </div>
 
-      <Card
-        className="mt-4 relative overflow-hidden border-0 p-6 text-primary-foreground shadow-[var(--shadow-elegant)]"
-        style={{ backgroundImage: "var(--gradient-hero)" }}
-      >
-        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider">
-          <Wallet className="size-3.5" />
-          Total outstanding
-        </div>
-        <div className="mt-2 font-display text-4xl font-bold tracking-tight">
-          {formatMoney(totalDue)}
-        </div>
-        <div className="mt-1 text-xs text-white/70">
-          across {unpaid.length} sale{unpaid.length === 1 ? "" : "s"} ·{" "}
-          {formatMoney(totalBilled)} billed
-        </div>
-      </Card>
-
-      <div className="mt-5 space-y-2.5">
+      <ul className="mt-7 border-t border-border">
         {isLoading ? (
-          <div className="py-14 text-center text-sm text-muted-foreground">
-            Loading…
-          </div>
+          <EmptyState>Loading…</EmptyState>
         ) : unpaid.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/80 bg-card/50 py-14 text-center text-sm text-muted-foreground">
-            Nothing outstanding. You're all paid up.
-          </div>
+          <EmptyState>Nothing outstanding. You&apos;re all paid up.</EmptyState>
         ) : (
           unpaid.map((s) => {
             const due = balanceDue(s);
-            const ageDays = differenceInCalendarDays(
-              new Date(),
-              new Date(s.warrantyStart),
-            );
-            const isOld = ageDays > 30;
+            const ageDays = differenceInCalendarDays(now, new Date(s.warrantyStart));
             return (
-              <div
-                key={s.id}
-                className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-soft)]"
-              >
+              <li key={s.id} className="border-b border-hairline py-[18px]">
                 <button
                   type="button"
                   onClick={() => setEditing(s)}
-                  className="block w-full text-left"
+                  className="flex w-full items-start justify-between gap-3 text-left"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate font-display text-[15px] font-semibold tracking-tight">
-                          {s.productName}
-                        </span>
-                        {s.quantity > 1 && (
-                          <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                            ×{s.quantity}
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {s.customerName || "—"}
-                        {s.customerNumber ? ` · ${s.customerNumber}` : ""}
-                      </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-[15px] font-bold">
+                      {s.productName}
+                      {s.quantity > 1 ? ` ×${s.quantity}` : ""}
                     </div>
-                    <div className="text-right">
-                      <div className="font-display text-lg font-bold tracking-tight text-destructive">
-                        {formatMoney(due)}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        of {formatMoney(lineTotal(s))}
-                      </div>
+                    <div className="mt-[3px] truncate text-[12px] text-muted-foreground">
+                      {s.customerName || "—"}
+                      {s.customerNumber ? ` · ${s.customerNumber}` : ""}
+                    </div>
+                  </div>
+                  <div className="tabular shrink-0 text-right">
+                    <div className="text-[17px] font-bold text-destructive">{formatMoney(due)}</div>
+                    <div className="mt-0.5 text-[11px] text-faint">
+                      of {formatMoney(lineTotal(s))}
                     </div>
                   </div>
                 </button>
-                <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5 text-[11px]">
+                <div className="mt-3 flex items-center justify-between">
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 font-medium",
-                      isOld ? "text-destructive" : "text-muted-foreground",
+                      "text-[12px] font-bold",
+                      ageDays > 30 ? "text-destructive" : "text-muted-foreground",
                     )}
                   >
-                    {isOld && <AlertCircle className="size-3" />}
-                    {ageDays}d old
+                    {ageDays} day{ageDays === 1 ? "" : "s"} old
                   </span>
                   <a
                     href={reminderWhatsAppUrl(s)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full bg-success/10 px-3 py-1 font-medium text-success hover:bg-success/20"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-[7px] text-[12px] font-bold text-white transition hover:bg-primary/90"
                   >
-                    <MessageCircle className="size-3" />
+                    <MessageCircle className="size-[13px]" strokeWidth={2.2} />
                     Send reminder
                   </a>
                 </div>
-              </div>
+              </li>
             );
           })
         )}
-      </div>
+      </ul>
 
-      {editing && (
-        <SaleDialog
-          open={!!editing}
-          onOpenChange={(o) => !o && setEditing(null)}
-          sale={editing}
-        />
-      )}
+      <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />
     </AppLayout>
   );
 }

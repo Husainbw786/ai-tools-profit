@@ -12,12 +12,11 @@ export const backfillMyBackup = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
 
-    const [{ data: sales }, { data: payments }, { data: contacts }] =
-      await Promise.all([
-        supabase.from("sales").select("*").eq("user_id", userId),
-        supabase.from("sale_payments").select("*").eq("user_id", userId),
-        supabase.from("contacts").select("*").eq("user_id", userId),
-      ]);
+    const [{ data: sales }, { data: payments }, { data: contacts }] = await Promise.all([
+      supabase.from("sales").select("*").eq("user_id", userId),
+      supabase.from("sale_payments").select("*").eq("user_id", userId),
+      supabase.from("contacts").select("*").eq("user_id", userId),
+    ]);
 
     const paidBySale = new Map<string, number>();
     for (const p of payments ?? []) {
@@ -26,10 +25,7 @@ export const backfillMyBackup = createServerFn({ method: "POST" })
 
     let saleCount = 0;
     for (const s of sales ?? []) {
-      await withBackup(
-        upsertBackupSale(s, paidBySale.get(s.id) ?? 0),
-        `backfill sale ${s.id}`,
-      );
+      await withBackup(upsertBackupSale(s, paidBySale.get(s.id) ?? 0), `backfill sale ${s.id}`);
       saleCount++;
     }
 

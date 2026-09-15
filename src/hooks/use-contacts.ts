@@ -1,11 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  listContacts,
-  upsertContact,
-  type ContactDTO,
-} from "@/lib/contacts.functions";
+import { listContacts, upsertContact, type ContactDTO } from "@/lib/contacts.functions";
 
 export type Contact = ContactDTO;
 

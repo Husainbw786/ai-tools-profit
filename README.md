@@ -3,10 +3,10 @@
 i want to built a very small product that help me to save the my side bussiness records.
 my side bussiness is like
 i sell premium subscrintion to my customer at cheap rates .
-i buy from i buyer and sell to my customer so what i am thinking is why  dont we create a  website mobile friendly where can i add my selling deatils
+i buy from i buyer and sell to my customer so what i am thinking is why dont we create a website mobile friendly where can i add my selling deatils
 like
-suppose i sell linkedin premium carrier 3 month than if the product is under warrenty than we can save all the deils by price selling price buyer nameand customer name 
-waarenty preiod 
+suppose i sell linkedin premium carrier 3 month than if the product is under warrenty than we can save all the deils by price selling price buyer nameand customer name
+waarenty preiod
 and simply i can that so this will help me to track everything.
 also after the waarenty ends i can archive it and also the website home page should have a metrics where profit is been shown lifetime current month and everything.
 lets plan a very simple and easy UI and than we will do backend
@@ -14,6 +14,14 @@ lets plan a very simple and easy UI and than we will do backend
 This project was built with [Lovable](https://lovable.dev).
 
 **Live app**: https://ai-tools-profit.lovable.app
+
+## Design
+
+The UI follows the ProfitAI v3 handoff (paper background, terracotta accent, Source Serif 4
+display numerals, hairline rules instead of cards). Everything visual is driven by the CSS
+variables in `src/styles.css`; dark mode is the `.dark` class on `<html>`, persisted under the
+`profitai-theme` localStorage key by `src/hooks/use-theme.ts`. Shared layout idioms (text tabs,
+chips, segmented pills, stat rules, underline search) live in `src/components/primitives.tsx`.
 
 ## Build with Lovable
 
@@ -46,16 +54,17 @@ no framework preset (`vercel.json` sets `framework: null`).
 2. Leave the framework preset as **Other**. Build command `npm run build` (from `vercel.json`).
 3. Add these **Environment Variables** (Production and Preview):
 
-   | Name | Value |
-   | --- | --- |
-   | `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
-   | `SUPABASE_PUBLISHABLE_KEY` | your `sb_publishable_...` key |
-   | `SUPABASE_SERVICE_ROLE_KEY` | your Supabase **secret** (service role) key |
-   | `ADMIN_USER_ID` | (optional) your Supabase auth user id, unlocks admin actions |
+   | Name                        | Value                                                        |
+   | --------------------------- | ------------------------------------------------------------ |
+   | `SUPABASE_URL`              | `https://<project-ref>.supabase.co`                          |
+   | `SUPABASE_PUBLISHABLE_KEY`  | your `sb_publishable_...` key                                |
+   | `SUPABASE_SERVICE_ROLE_KEY` | your Supabase **secret** (service role) key                  |
+   | `ADMIN_USER_ID`             | (optional) your Supabase auth user id, unlocks admin actions |
 
    The browser-side values (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) are
    read from the committed `.env` at build time; override them in Vercel if you
    point the app at a different Supabase project.
+
 4. Deploy. Every push to the connected branch redeploys.
 
 ### Option B: GitHub Actions

@@ -145,10 +145,7 @@ async function loadWorkspaceDetail(supabase: any, userId: string, wsId: string) 
 
   let invites: any[] = [];
   if (myRole === "owner") {
-    const { data } = await supabase
-      .from("workspace_invites")
-      .select("*")
-      .eq("workspace_id", wsId);
+    const { data } = await supabase.from("workspace_invites").select("*").eq("workspace_id", wsId);
     invites = data ?? [];
   }
 
@@ -364,10 +361,7 @@ export const listLedger = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const rows = entries ?? [];
     const ids = Array.from(
-      new Set([
-        ...rows.map((r: any) => r.payer_user_id),
-        ...rows.map((r: any) => r.created_by),
-      ]),
+      new Set([...rows.map((r: any) => r.payer_user_id), ...rows.map((r: any) => r.created_by)]),
     );
     const emailMap = await lookupEmails(ids);
 

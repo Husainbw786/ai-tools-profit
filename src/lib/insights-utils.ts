@@ -11,10 +11,7 @@ export type Group = {
   marginPct: number;
 };
 
-const buildGroups = (
-  sales: Sale[],
-  keyOf: (s: Sale) => string,
-): Group[] => {
+const buildGroups = (sales: Sale[], keyOf: (s: Sale) => string): Group[] => {
   const map = new Map<string, Group>();
   for (const s of sales) {
     const key = keyOf(s).trim();
@@ -35,12 +32,9 @@ const buildGroups = (
   }));
 };
 
-export const groupByProduct = (sales: Sale[]) =>
-  buildGroups(sales, (s) => s.productName);
-export const groupByCustomer = (sales: Sale[]) =>
-  buildGroups(sales, (s) => s.customerName);
-export const groupByBuyer = (sales: Sale[]) =>
-  buildGroups(sales, (s) => s.buyerName);
+export const groupByProduct = (sales: Sale[]) => buildGroups(sales, (s) => s.productName);
+export const groupByCustomer = (sales: Sale[]) => buildGroups(sales, (s) => s.customerName);
+export const groupByBuyer = (sales: Sale[]) => buildGroups(sales, (s) => s.buyerName);
 
 export type MonthRow = {
   monthKey: string; // YYYY-MM
@@ -82,7 +76,5 @@ export const monthlyPnL = (sales: Sale[]): MonthRow[] => {
     }
     map.set(key, row);
   }
-  return Array.from(map.values()).sort((a, b) =>
-    b.monthKey.localeCompare(a.monthKey),
-  );
+  return Array.from(map.values()).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
 };

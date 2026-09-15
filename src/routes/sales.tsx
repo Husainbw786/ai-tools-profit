@@ -1,14 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { SaleDialog } from "@/components/SaleDialog";
+import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { PageTitle, Pill, TextTabs, UnderlineSearch } from "@/components/primitives";
 import { useSales } from "@/hooks/use-sales";
-import { isExpired, type Sale } from "@/lib/sale-utils";
+import { openNewSale } from "@/lib/new-sale-bus";
+import {
+  balanceDue,
+  daysRemaining,
+  formatMoney,
+  isExpired,
+  isRefunded,
+  type Sale,
+} from "@/lib/sale-utils";
 
 export const Route = createFileRoute("/sales")({
   head: () => ({
@@ -21,92 +27,72 @@ export const Route = createFileRoute("/sales")({
 });
 
 type StatusFilter = "all" | "paid" | "partial" | "unpaid";
-const STATUS_TABS: { id: StatusFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "paid", label: "Paid" },
-  { id: "partial", label: "Partial" },
-  { id: "unpaid", label: "Unpaid" },
-];
 
 function SalesPage() {
   const { data: sales = [], isLoading } = useSales();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Sale | null>(null);
 
-  const activeAll = useMemo(
-    () => sales.filter((s: Sale) => !isExpired(s)),
-    [sales],
+  const activeAll = useMemo(() => sales.filter((s: Sale) => !isExpired(s)), [sales]);
+  const owed = useMemo(
+    () => activeAll.reduce((a, s) => a + (isRefunded(s) ? 0 : balanceDue(s)), 0),
+    [activeAll],
   );
   const active = useMemo(() => {
     const term = q.trim().toLowerCase();
     return activeAll
-      .filter((s: Sale) => status === "all" || s.paymentStatus === status)
+      .filter((s) => status === "all" || s.paymentStatus === status)
       .filter(
-        (s: Sale) =>
+        (s) =>
           !term ||
           s.productName.toLowerCase().includes(term) ||
           s.customerName.toLowerCase().includes(term),
-      );
+      )
+      .sort((a, b) => daysRemaining(a) - daysRemaining(b));
   }, [activeAll, q, status]);
+
+  const tabs: { id: StatusFilter; label: React.ReactNode }[] = [
+    { id: "all", label: `All ${activeAll.length}` },
+    { id: "paid", label: "Paid" },
+    { id: "partial", label: "Partial" },
+    { id: "unpaid", label: "Unpaid" },
+  ];
 
   return (
     <AppLayout>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">
-            Active sales
-          </h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {activeAll.length} subscription{activeAll.length === 1 ? "" : "s"} under warranty
-          </p>
-        </div>
-        <Button
-          size="sm"
-          className="rounded-full px-4 shadow-[var(--shadow-soft)]"
-          onClick={() => { setEditing(null); setDialogOpen(true); }}
-        >
-          <Plus className="size-4" /> Add
-        </Button>
-      </div>
-      <div className="relative mt-4">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="h-11 rounded-2xl border-border/70 bg-card pl-9 shadow-[var(--shadow-soft)]"
-          placeholder="Search product or customer…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-      </div>
-      <div className="mt-4 inline-flex w-full items-center gap-1 rounded-full border border-border/70 bg-card p-1 shadow-[var(--shadow-soft)]">
-        {STATUS_TABS.map((t) => {
-          const isActive = status === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setStatus(t.id)}
-              className={cn(
-                "flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                isActive
-                  ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)]"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-5">
-        <SalesList
-          sales={active}
-          emptyText={isLoading ? "Loading…" : "No active sales."}
-          onRowClick={(s) => { setEditing(s); setDialogOpen(true); }}
-        />
-      </div>
-      <SaleDialog open={dialogOpen} onOpenChange={setDialogOpen} sale={editing} />
+      <PageTitle
+        className="mt-7"
+        title="Active"
+        sub={
+          <>
+            {activeAll.length} subscription{activeAll.length === 1 ? "" : "s"} ·{" "}
+            <span className="font-semibold text-foreground">{formatMoney(owed)} owed</span>
+          </>
+        }
+        right={
+          <Pill onClick={() => openNewSale()} className="py-[9px] text-[13px]">
+            <Plus className="size-3.5" strokeWidth={2.6} /> Add
+          </Pill>
+        }
+      />
+
+      <UnderlineSearch
+        className="mt-[22px]"
+        value={q}
+        onChange={setQ}
+        placeholder="Search product or customer"
+      />
+
+      <TextTabs className="mt-5" tabs={tabs} value={status} onChange={setStatus} />
+
+      <SalesList
+        sales={active}
+        emptyText={isLoading ? "Loading…" : "No active sales match."}
+        onRowClick={(s) => setEditing(s)}
+      />
+
+      <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />
     </AppLayout>
   );
 }

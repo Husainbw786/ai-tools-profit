@@ -38,17 +38,14 @@ export const effectiveRevenue = (s: Sale) =>
 
 export const profit = (s: Sale) => effectiveRevenue(s) - lineCost(s);
 
-export const balanceDue = (s: Sale) =>
-  Math.max(0, lineTotal(s) - (s.amountPaid ?? 0));
+export const balanceDue = (s: Sale) => Math.max(0, lineTotal(s) - (s.amountPaid ?? 0));
 
 export const marginPct = (s: Sale) =>
   s.buyPrice > 0 ? ((s.sellPrice - s.buyPrice) / s.buyPrice) * 100 : 0;
 
-export const formatPct = (n: number) =>
-  `${n > 0 ? "+" : ""}${n.toFixed(0)}%`;
+export const formatPct = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(0)}%`;
 
-export const warrantyEnd = (s: Sale) =>
-  addMonths(new Date(s.warrantyStart), s.durationMonths);
+export const warrantyEnd = (s: Sale) => addMonths(new Date(s.warrantyStart), s.durationMonths);
 
 export const isExpired = (s: Sale, now: Date = new Date()) =>
   warrantyEnd(s).getTime() <= now.getTime();
@@ -143,3 +140,46 @@ export function reminderWhatsAppUrl(s: Sale): string {
   const text = encodeURIComponent(buildReminderMessage(s));
   return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
 }
+// Compact rupee label for chart bars: ₹1.7k, ₹12k, ₹850.
+export function formatCompactMoney(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1000) {
+    const k = abs / 1000;
+    return `${n < 0 ? "-" : ""}₹${k.toFixed(abs >= 10000 ? 0 : 1)}k`;
+  }
+  return formatMoney(n);
+}
+
+export const formatDate = (iso: string | Date) =>
+  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+export const formatDateShort = (iso: string | Date) =>
+  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+export const statusLabel = (s: Sale) =>
+  isRefunded(s)
+    ? "Refunded"
+    : s.paymentStatus === "paid"
+      ? "Paid"
+      : s.paymentStatus === "partial"
+        ? "Partial"
+        : "Unpaid";
+
+// Status colour classes for the 7px dot and the tinted tag.
+export const statusDotClass = (s: Sale) =>
+  isRefunded(s)
+    ? "bg-faint"
+    : s.paymentStatus === "paid"
+      ? "bg-success"
+      : s.paymentStatus === "partial"
+        ? "bg-warning"
+        : "bg-destructive";
+
+export const statusTagClass = (s: Sale) =>
+  isRefunded(s)
+    ? "bg-secondary text-muted-foreground"
+    : s.paymentStatus === "paid"
+      ? "bg-success-soft text-success"
+      : s.paymentStatus === "partial"
+        ? "bg-warning-soft text-warning"
+        : "bg-destructive-soft text-destructive";

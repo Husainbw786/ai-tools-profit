@@ -22,10 +22,7 @@ const nameOf = (s: Sale, kind: ContactKind) =>
 const phoneOf = (s: Sale, kind: ContactKind) =>
   kind === "customer" ? s.customerNumber : s.dealerNumber;
 
-export function buildContactSummaries(
-  sales: Sale[],
-  kind: ContactKind,
-): ContactSummary[] {
+export function buildContactSummaries(sales: Sale[], kind: ContactKind): ContactSummary[] {
   const map = new Map<string, ContactSummary>();
   for (const s of sales) {
     const display = nameOf(s, kind).trim();
@@ -68,21 +65,18 @@ export function buildContactSummaries(
   return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
 }
 
-export const TAG_PRESETS = [
-  "VIP",
-  "Friend",
-  "Wholesale",
-  "Slow-payer",
-  "Blocked",
-] as const;
+export const TAG_PRESETS = ["VIP", "Friend", "Wholesale", "Slow-payer", "Blocked"] as const;
 
 export function tagColor(tag: string): string {
   const t = tag.toLowerCase();
-  if (t.includes("vip")) return "bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300";
+  if (t.includes("vip"))
+    return "bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300";
   if (t.includes("friend")) return "bg-sky-500/15 text-sky-700 border-sky-500/30 dark:text-sky-300";
-  if (t.includes("slow")) return "bg-orange-500/15 text-orange-700 border-orange-500/30 dark:text-orange-300";
+  if (t.includes("slow"))
+    return "bg-orange-500/15 text-orange-700 border-orange-500/30 dark:text-orange-300";
   if (t.includes("block")) return "bg-destructive/15 text-destructive border-destructive/30";
-  if (t.includes("whole")) return "bg-violet-500/15 text-violet-700 border-violet-500/30 dark:text-violet-300";
+  if (t.includes("whole"))
+    return "bg-violet-500/15 text-violet-700 border-violet-500/30 dark:text-violet-300";
   return "bg-secondary text-secondary-foreground border-border";
 }
 

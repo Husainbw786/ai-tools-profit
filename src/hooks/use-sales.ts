@@ -1,13 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  createSale,
-  deleteSale,
-  listSales,
-  updateSale,
-  type SaleDTO,
-} from "@/lib/sales.functions";
+import { createSale, deleteSale, listSales, updateSale, type SaleDTO } from "@/lib/sales.functions";
 
 export type Sale = SaleDTO;
 
@@ -29,18 +23,19 @@ export function useCreateSale() {
   const fn = useServerFn(createSale);
   return useMutation({
     mutationFn: (
-      input: Omit<Sale, "id" | "createdAt" | "amountPaid" | "refundedAt" | "refundAmount" | "refundReason"> & {
+      input: Omit<
+        Sale,
+        "id" | "createdAt" | "amountPaid" | "refundedAt" | "refundAmount" | "refundReason"
+      > & {
         initialPaymentAmount?: number;
       },
-    ) =>
-      fn({ data: input }),
+    ) => fn({ data: input }),
     onSuccess: (row) => {
       if (row) {
         qc.setQueryData<Sale[]>(SALES_KEY, (current = []) => {
           const withoutDuplicate = current.filter((sale) => sale.id !== row.id);
           return [row, ...withoutDuplicate].sort(
-            (a, b) =>
-              new Date(b.warrantyStart).getTime() - new Date(a.warrantyStart).getTime(),
+            (a, b) => new Date(b.warrantyStart).getTime() - new Date(a.warrantyStart).getTime(),
           );
         });
       }
@@ -56,8 +51,7 @@ export function useUpdateSale() {
     mutationFn: (input: {
       id: string;
       patch: Partial<Omit<Sale, "id" | "createdAt" | "amountPaid">>;
-    }) =>
-      fn({ data: input }),
+    }) => fn({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SALES_KEY }),
   });
 }

@@ -3,27 +3,16 @@ import { useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import {
-  Sun,
-  User,
-  Store,
-  AlertCircle,
-  Link2,
-  Archive,
-  RefreshCw,
-  ChevronRight,
-  DatabaseBackup,
-} from "lucide-react";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageTitle, SegmentedPill } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { useSales } from "@/hooks/use-sales";
-import { useContacts } from "@/hooks/use-contacts";
 import { supabase } from "@/integrations/supabase/client";
-import { balanceDue, formatMoney } from "@/lib/sale-utils";
+import { balanceDue, formatMoney, isExpired, isRefunded } from "@/lib/sale-utils";
 import { backfillSalesToSheet, isAdmin } from "@/lib/sales.functions";
 import { backfillMyBackup } from "@/lib/backup.functions";
 
@@ -37,33 +26,30 @@ export const Route = createFileRoute("/more")({
   component: MorePage,
 });
 
+const THEMES = [
+  { id: "light" as const, label: "Light" },
+  { id: "dark" as const, label: "Dark" },
+];
+
 function MorePage() {
   const { data: sales = [] } = useSales();
-  const { data: contacts = [] } = useContacts();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
   const customerCount = useMemo(
-    () =>
-      new Set(
-        sales
-          .map((s) => s.customerName.trim().toLowerCase())
-          .filter(Boolean),
-      ).size,
+    () => new Set(sales.map((s) => s.customerName.trim().toLowerCase()).filter(Boolean)).size,
     [sales],
   );
   const dealerCount = useMemo(
-    () =>
-      new Set(
-        sales.map((s) => s.buyerName.trim().toLowerCase()).filter(Boolean),
-      ).size,
+    () => new Set(sales.map((s) => s.buyerName.trim().toLowerCase()).filter(Boolean)).size,
     [sales],
   );
   const totalDue = useMemo(
-    () => sales.reduce((sum, s) => sum + balanceDue(s), 0),
+    () => sales.reduce((sum, s) => sum + (isRefunded(s) ? 0 : balanceDue(s)), 0),
     [sales],
   );
+  const expiredCount = useMemo(() => sales.filter((s) => isExpired(s)).length, [sales]);
 
   const isAdminFn = useServerFn(isAdmin);
   const backfillFn = useServerFn(backfillSalesToSheet);
@@ -75,8 +61,7 @@ function MorePage() {
   });
   const backfill = useMutation({
     mutationFn: () => backfillFn(),
-    onSuccess: (r) =>
-      toast.success(`Synced ${r.total} sales across ${r.users} user(s)`),
+    onSuccess: (r) => toast.success(`Synced ${r.total} sales across ${r.users} user(s)`),
     onError: (e: Error) => toast.error(e.message),
   });
   const backupBackfill = useMutation({
@@ -93,174 +78,124 @@ function MorePage() {
     navigate({ to: "/login" });
   };
 
-  void contacts; // contacts hook keeps cache warm
-
-  const items: Array<{
-    to: "/customers" | "/dealers" | "/collections" | "/links" | "/archive";
+  const links: Array<{
+    to: "/customers" | "/dealers" | "/collections" | "/archive" | "/links";
     label: string;
     sub: string;
-    icon: React.ComponentType<{ className?: string }>;
-    tint: string;
   }> = [
     {
       to: "/customers",
       label: "Customers",
       sub: `${customerCount} ${customerCount === 1 ? "person" : "people"}`,
-      icon: User,
-      tint: "bg-primary/10 text-primary",
     },
     {
       to: "/dealers",
       label: "Dealers",
       sub: `${dealerCount} ${dealerCount === 1 ? "dealer" : "dealers"}`,
-      icon: Store,
-      tint: "bg-primary/10 text-primary",
     },
     {
       to: "/collections",
       label: "Dues",
       sub: totalDue > 0 ? `${formatMoney(totalDue)} outstanding` : "All clear",
-      icon: AlertCircle,
-      tint: "bg-destructive/10 text-destructive",
-    },
-    {
-      to: "/links",
-      label: "Shared links",
-      sub: "Collaborate privately",
-      icon: Link2,
-      tint: "bg-primary/10 text-primary",
     },
     {
       to: "/archive",
       label: "Archive",
-      sub: "Expired & completed",
-      icon: Archive,
-      tint: "bg-muted text-muted-foreground",
+      sub: `${expiredCount} expired sale${expiredCount === 1 ? "" : "s"}`,
     },
+    { to: "/links", label: "Shared links", sub: "Collaborate privately" },
   ];
 
   return (
     <AppLayout>
-      <div className="mb-5">
-        <h1 className="font-display text-3xl font-bold tracking-tight">More</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">Tools & settings</p>
+      <PageTitle className="mt-7" title="More" sub="Tools & settings" />
+
+      <div className="mt-[22px] flex items-center justify-between border-y border-border border-b-hairline py-[18px]">
+        <div>
+          <div className="text-[15px] font-bold">Appearance</div>
+          <div className="mt-0.5 text-[12px] text-muted-foreground">
+            {theme === "dark" ? "Dark mode" : "Light mode"}
+          </div>
+        </div>
+        <SegmentedPill options={THEMES} value={theme} onChange={setTheme} />
       </div>
 
-      <Card className="flex items-center justify-between gap-3 border-border/70 p-4 shadow-[var(--shadow-soft)]">
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-full bg-primary/15 text-primary">
-            <Sun className="size-4" />
-          </span>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold">Appearance</div>
-            <div className="text-[11px] capitalize text-muted-foreground">
-              {theme} mode
-            </div>
-          </div>
-        </div>
-        <div className="inline-flex rounded-full border border-border bg-secondary/60 p-1 text-xs font-semibold">
-          {(["light", "dark"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTheme(t)}
-              className={cn(
-                "rounded-full px-3 py-1 capitalize transition",
-                theme === t
-                  ? "bg-card text-foreground shadow-[var(--shadow-soft)]"
-                  : "text-muted-foreground",
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="mt-4 divide-y divide-border/60 overflow-hidden border-border/70 p-0 shadow-[var(--shadow-soft)]">
-        {items.map((it) => {
-          const Icon = it.icon;
-          return (
+      <ul>
+        {links.map((l) => (
+          <li key={l.to}>
             <Link
-              key={it.to}
-              to={it.to}
-              className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-secondary/50"
+              to={l.to}
+              className="flex items-center justify-between gap-3 border-b border-hairline py-[18px]"
             >
-              <span
-                className={cn(
-                  "grid size-10 shrink-0 place-items-center rounded-full",
-                  it.tint,
-                )}
-              >
-                <Icon className="size-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold">{it.label}</div>
-                <div className="truncate text-[11px] text-muted-foreground">
-                  {it.sub}
-                </div>
+              <div className="min-w-0">
+                <div className="text-[15px] font-bold">{l.label}</div>
+                <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{l.sub}</div>
               </div>
-              <ChevronRight className="size-4 text-muted-foreground/60" />
+              <ChevronRight className="size-4 shrink-0 text-faint" strokeWidth={2.2} />
             </Link>
-          );
-        })}
+          </li>
+        ))}
         {adminData?.isAdmin && (
-          <button
-            type="button"
-            disabled={backfill.isPending}
+          <ActionRow
+            label="Sync to Google Sheet"
+            sub="Export every sale"
+            pending={backfill.isPending}
             onClick={() => backfill.mutate()}
-            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-secondary/50 disabled:opacity-60"
-          >
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-              <RefreshCw
-                className={cn("size-4", backfill.isPending && "animate-spin")}
-              />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold">Sync to Sheet</div>
-              <div className="text-[11px] text-muted-foreground">
-                Export to Google Sheets
-              </div>
-            </div>
-            <ChevronRight className="size-4 text-muted-foreground/60" />
-          </button>
+          />
         )}
-        <button
-          type="button"
-          disabled={backupBackfill.isPending}
+        <ActionRow
+          label="Sync to backup DB"
+          sub="Copy to second project"
+          pending={backupBackfill.isPending}
           onClick={() => backupBackfill.mutate()}
-          className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-secondary/50 disabled:opacity-60"
-        >
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-            <DatabaseBackup
-              className={cn(
-                "size-4",
-                backupBackfill.isPending && "animate-spin",
-              )}
-            />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold">Sync to Backup DB</div>
-            <div className="text-[11px] text-muted-foreground">
-              Copy existing data to second Supabase project
-            </div>
-          </div>
-          <ChevronRight className="size-4 text-muted-foreground/60" />
-        </button>
-      </Card>
+        />
+      </ul>
 
       <Button
         variant="outline"
-        className="mt-4 h-12 w-full rounded-2xl border-border/70 bg-card text-sm font-semibold text-destructive shadow-[var(--shadow-soft)] hover:bg-destructive/5 hover:text-destructive"
+        className="mt-7 h-[50px] w-full text-[14px] text-destructive hover:text-destructive"
         onClick={signOut}
       >
         Sign out
       </Button>
 
-      <div className="mt-6 text-center text-[11px] text-muted-foreground">
-        ProfitAI · Resale Ledger · v2.0
-        {user?.email && <div className="mt-0.5 opacity-70">{user.email}</div>}
+      <div className="mt-[22px] text-center text-[11px] font-semibold text-faint">
+        ProfitAI · Resale Ledger · v3.0
+        {user?.email && <div className="mt-0.5">{user.email}</div>}
       </div>
     </AppLayout>
+  );
+}
+
+function ActionRow({
+  label,
+  sub,
+  pending,
+  onClick,
+}: {
+  label: string;
+  sub: string;
+  pending: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={onClick}
+        className="flex w-full items-center justify-between gap-3 border-b border-hairline py-[18px] text-left disabled:opacity-60"
+      >
+        <div className="min-w-0">
+          <div className="text-[15px] font-bold">{label}</div>
+          <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{sub}</div>
+        </div>
+        {pending ? (
+          <RefreshCw className="size-4 shrink-0 animate-spin text-faint" />
+        ) : (
+          <ChevronRight className={cn("size-4 shrink-0 text-faint")} strokeWidth={2.2} />
+        )}
+      </button>
+    </li>
   );
 }

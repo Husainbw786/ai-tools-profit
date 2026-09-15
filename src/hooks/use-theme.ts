@@ -8,9 +8,7 @@ function getInitial(): Theme {
   if (typeof window === "undefined") return "light";
   const saved = window.localStorage.getItem(KEY);
   if (saved === "light" || saved === "dark") return saved;
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function apply(theme: Theme) {

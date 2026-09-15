@@ -128,9 +128,7 @@ export async function ensureUserTab(tabName: string) {
 }
 
 async function findRowIndex(tabName: string, id: string): Promise<number | null> {
-  const data = await gw(
-    `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A:A`,
-  );
+  const data = await gw(`/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A:A`);
   const values: string[][] = data.values ?? [];
   for (let i = 0; i < values.length; i++) {
     if (values[i][0] === id) return i + 1; // 1-based
@@ -174,10 +172,10 @@ export async function deleteSaleRow(tabName: string, id: string) {
   try {
     const idx = await findRowIndex(tabName, id);
     if (idx === null) return;
-    await gw(
-      `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A${idx}:O${idx}:clear`,
-      { method: "POST", body: "{}" },
-    );
+    await gw(`/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A${idx}:O${idx}:clear`, {
+      method: "POST",
+      body: "{}",
+    });
   } catch (e) {
     console.warn("[sheets] deleteSaleRow failed:", (e as Error).message);
   }
@@ -186,10 +184,10 @@ export async function deleteSaleRow(tabName: string, id: string) {
 export async function replaceUserSheet(tabName: string, sales: SaleRow[]) {
   await ensureUserTab(tabName);
   // Clear A2:N (keep headers), then write all rows
-  await gw(
-    `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A2:O:clear`,
-    { method: "POST", body: "{}" },
-  );
+  await gw(`/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A2:O:clear`, {
+    method: "POST",
+    body: "{}",
+  });
   if (sales.length === 0) return;
   await gw(
     `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A2:O${sales.length + 1}?valueInputOption=USER_ENTERED`,
