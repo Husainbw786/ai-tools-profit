@@ -13,7 +13,7 @@ import {
   useCreatePayment,
   useDeletePayment,
 } from "@/hooks/use-payments";
-import { formatMoney, type Sale } from "@/lib/sale-utils";
+import { formatMoney, lineTotal, type Sale } from "@/lib/sale-utils";
 
 export function PaymentsSection({ sale }: { sale: Sale }) {
   const { data: payments = [], isLoading } = usePaymentsForSale(sale.id);
@@ -21,7 +21,7 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
   const deleteMut = useDeletePayment(sale.id);
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-  const balance = Math.max(0, sale.sellPrice - totalPaid);
+  const balance = Math.max(0, lineTotal(sale) - totalPaid);
 
   const [amount, setAmount] = useState<number>(0);
   const [paidAt, setPaidAt] = useState<Date>(new Date());
@@ -70,7 +70,7 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
         <div className="text-right text-xs">
           <div className="text-muted-foreground">
             Paid <span className="font-semibold text-success">{formatMoney(totalPaid)}</span>{" "}
-            of {formatMoney(sale.sellPrice)}
+            of {formatMoney(lineTotal(sale))}
           </div>
           {balance > 0 ? (
             <div className="font-semibold text-destructive">

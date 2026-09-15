@@ -21,6 +21,8 @@ import { useCreateSale, useDeleteSale, useSales, useUpdateSale } from "@/hooks/u
 import {
   balanceDue,
   formatMoney,
+  lineCost,
+  lineTotal,
   warrantyEnd,
   whatsAppUrl,
   isRefunded,
@@ -634,18 +636,19 @@ function SaleView({
   const refunded = isRefunded(sale);
   const updateMut = useUpdateSale();
   const [showRefund, setShowRefund] = useState(false);
-  const [refundAmt, setRefundAmt] = useState<number>(sale.sellPrice);
+  const [refundAmt, setRefundAmt] = useState<number>(lineTotal(sale));
   const [refundReason, setRefundReason] = useState("");
   const effectiveProfit =
-    (refunded ? sale.sellPrice - (sale.refundAmount ?? sale.sellPrice) : sale.sellPrice) -
-    sale.buyPrice;
+    (refunded
+      ? lineTotal(sale) - (sale.refundAmount ?? lineTotal(sale))
+      : lineTotal(sale)) - lineCost(sale);
   const submitRefund = async () => {
     try {
       await updateMut.mutateAsync({
         id: sale.id,
         patch: {
           refundedAt: new Date().toISOString(),
-          refundAmount: Math.max(0, Math.min(refundAmt, sale.sellPrice)),
+          refundAmount: Math.max(0, Math.min(refundAmt, lineTotal(sale))),
           refundReason: refundReason.trim() || null,
         },
       });
@@ -697,11 +700,11 @@ function SaleView({
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-md bg-background px-2 py-1.5">
             <div className="text-[10px] uppercase text-muted-foreground">Sell</div>
-            <div className="text-sm font-semibold">{formatMoney(sale.sellPrice)}</div>
+            <div className="text-sm font-semibold">{formatMoney(lineTotal(sale))}</div>
           </div>
           <div className="rounded-md bg-background px-2 py-1.5">
             <div className="text-[10px] uppercase text-muted-foreground">Buy</div>
-            <div className="text-sm font-semibold">{formatMoney(sale.buyPrice)}</div>
+            <div className="text-sm font-semibold">{formatMoney(lineCost(sale))}</div>
           </div>
           <div className="rounded-md bg-background px-2 py-1.5">
             <div className="text-[10px] uppercase text-muted-foreground">Profit</div>
@@ -717,7 +720,7 @@ function SaleView({
         </div>
         {refunded && (
           <div className="mt-2 rounded-md bg-destructive/10 px-2 py-1.5 text-center text-xs font-semibold text-destructive">
-            REFUNDED · {formatMoney(sale.refundAmount ?? sale.sellPrice)} returned
+            REFUNDED · {formatMoney(sale.refundAmount ?? lineTotal(sale))} returned
             {sale.refundedAt ? ` · ${format(new Date(sale.refundedAt), "PP")}` : ""}
           </div>
         )}
@@ -768,7 +771,7 @@ function SaleView({
             <div className="text-xs">
               <div className="font-semibold text-destructive">Refunded</div>
               <div className="text-muted-foreground">
-                {formatMoney(sale.refundAmount ?? sale.sellPrice)} returned to customer
+                {formatMoney(sale.refundAmount ?? lineTotal(sale))} returned to customer
                 {sale.refundReason ? ` · ${sale.refundReason}` : ""}
               </div>
             </div>
@@ -803,7 +806,7 @@ function SaleView({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setRefundAmt(sale.sellPrice)}
+                onClick={() => setRefundAmt(lineTotal(sale))}
               >
                 Full
               </Button>
@@ -815,7 +818,7 @@ function SaleView({
               className="text-xs"
             />
             <p className="text-[10px] text-muted-foreground">
-              Profit will drop to {formatMoney(sale.sellPrice - refundAmt - sale.buyPrice)}.
+              Profit will drop to {formatMoney(lineTotal(sale) - refundAmt - lineCost(sale))}.
             </p>
             <div className="flex gap-2">
               <Button
@@ -845,7 +848,7 @@ function SaleView({
             size="sm"
             className="w-full text-destructive hover:text-destructive"
             onClick={() => {
-              setRefundAmt(sale.sellPrice);
+              setRefundAmt(lineTotal(sale));
               setShowRefund(true);
             }}
           >

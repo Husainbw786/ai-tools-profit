@@ -10,6 +10,7 @@ import {
   profit,
   warrantyEnd,
   balanceDue,
+  lineTotal,
   type Sale,
 } from "@/lib/sale-utils";
 
@@ -123,7 +124,7 @@ export function SalesList({ sales, onRowClick, emptyText = "No sales yet." }: Pr
                     p >= 0 ? "text-primary" : "text-destructive",
                   )}
                 >
-                  {formatMoney(s.sellPrice)}
+                  {formatMoney(lineTotal(s))}
                 </div>
                 {s.buyPrice > 0 ? (
                   <div

@@ -37,6 +37,8 @@ import {
   isExpired,
   profit,
   balanceDue,
+  lineTotal,
+  lineCost,
   type DateRange,
   type Sale,
 } from "@/lib/sale-utils";
@@ -75,8 +77,8 @@ function Index() {
 
   const inRange = useMemo(() => filterByRange(sales, range), [sales, range]);
   const totalProfit = inRange.reduce((sum, s) => sum + profit(s), 0);
-  const totalRevenue = inRange.reduce((sum, s) => sum + s.sellPrice, 0);
-  const totalCost = inRange.reduce((sum, s) => sum + s.buyPrice, 0);
+  const totalRevenue = inRange.reduce((sum, s) => sum + lineTotal(s), 0);
+  const totalCost = inRange.reduce((sum, s) => sum + lineCost(s), 0);
   const unpaidSales = sales.filter((s) => s.paymentStatus !== "paid");
   const partialCount = unpaidSales.filter((s) => s.paymentStatus === "partial").length;
   const unpaidOnlyCount = unpaidSales.filter((s) => s.paymentStatus === "unpaid").length;

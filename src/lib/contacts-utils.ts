@@ -1,4 +1,4 @@
-import { balanceDue, profit, type Sale } from "@/lib/sale-utils";
+import { balanceDue, lineCost, lineTotal, profit, type Sale } from "@/lib/sale-utils";
 
 export type ContactKind = "customer" | "dealer";
 
@@ -49,8 +49,8 @@ export function buildContactSummaries(
       map.set(key, row);
     }
     row.orders += 1;
-    row.revenue += s.sellPrice;
-    row.cost += s.buyPrice;
+    row.revenue += lineTotal(s);
+    row.cost += lineCost(s);
     row.totalProfit += profit(s);
     const due = balanceDue(s);
     if (due > 0) {

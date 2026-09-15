@@ -26,13 +26,20 @@ export type Sale = {
 
 export const isRefunded = (s: Sale) => !!s.refundedAt;
 
-export const effectiveRevenue = (s: Sale) =>
-  isRefunded(s) ? s.sellPrice - (s.refundAmount ?? s.sellPrice) : s.sellPrice;
+const qty = (s: Sale) => s.quantity || 1;
 
-export const profit = (s: Sale) => effectiveRevenue(s) - s.buyPrice;
+// Total billed for the line item (per-unit price × quantity)
+export const lineTotal = (s: Sale) => s.sellPrice * qty(s);
+
+export const lineCost = (s: Sale) => s.buyPrice * qty(s);
+
+export const effectiveRevenue = (s: Sale) =>
+  isRefunded(s) ? lineTotal(s) - (s.refundAmount ?? lineTotal(s)) : lineTotal(s);
+
+export const profit = (s: Sale) => effectiveRevenue(s) - lineCost(s);
 
 export const balanceDue = (s: Sale) =>
-  Math.max(0, s.sellPrice - (s.amountPaid ?? 0));
+  Math.max(0, lineTotal(s) - (s.amountPaid ?? 0));
 
 export const marginPct = (s: Sale) =>
   s.buyPrice > 0 ? ((s.sellPrice - s.buyPrice) / s.buyPrice) * 100 : 0;
@@ -97,7 +104,7 @@ export function buildWhatsAppMessage(s: Sale): string {
     s.hasWarranty
       ? `Warranty: ${fmtDate(new Date(s.warrantyStart))} → ${fmtDate(end)}`
       : `Start: ${fmtDate(new Date(s.warrantyStart))}`,
-    `Amount: ${formatMoney(s.sellPrice)}`,
+    `Amount: ${formatMoney(lineTotal(s))}`,
     statusLine,
     "",
     "_Sent via ProfitAI_",
@@ -122,7 +129,7 @@ export function buildReminderMessage(s: Sale): string {
     `This is a gentle reminder for the pending payment on:`,
     `*${s.productName}*${s.quantity > 1 ? ` × ${s.quantity}` : ""}`,
     `Sold on: ${fmtDate(new Date(s.warrantyStart))}`,
-    `Total: ${formatMoney(s.sellPrice)}`,
+    `Total: ${formatMoney(lineTotal(s))}`,
     paid > 0 ? `Paid so far: ${formatMoney(paid)}` : null,
     `*Balance due: ${formatMoney(due)}*`,
     "",

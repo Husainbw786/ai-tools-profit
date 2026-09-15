@@ -10,6 +10,8 @@ import { useSales } from "@/hooks/use-sales";
 import {
   formatMoney,
   formatPct,
+  lineCost,
+  lineTotal,
   marginPct,
   profit,
   type Sale,
@@ -37,8 +39,8 @@ function DealerPage() {
   );
 
   const totals = useMemo(() => {
-    const revenue = dealerSales.reduce((a, s) => a + s.sellPrice, 0);
-    const cost = dealerSales.reduce((a, s) => a + s.buyPrice, 0);
+    const revenue = dealerSales.reduce((a, s) => a + lineTotal(s), 0);
+    const cost = dealerSales.reduce((a, s) => a + lineCost(s), 0);
     const totalProfit = dealerSales.reduce((a, s) => a + profit(s), 0);
     const avgMargin =
       dealerSales.length > 0

@@ -25,7 +25,7 @@ const buildGroups = (
     existing.count += 1;
     existing.units += s.quantity || 1;
     existing.revenue += effectiveRevenue(s);
-    existing.cost += s.buyPrice;
+    existing.cost += s.buyPrice * (s.quantity || 1);
     existing.profit += profit(s);
     map.set(key, existing);
   }
@@ -73,7 +73,7 @@ export const monthlyPnL = (sales: Sale[]): MonthRow[] => {
       } as MonthRow);
     row.count += 1;
     row.revenue += effectiveRevenue(s);
-    row.cost += s.buyPrice;
+    row.cost += s.buyPrice * (s.quantity || 1);
     row.profit += profit(s);
     const due = balanceDue(s);
     if (due > 0) {
