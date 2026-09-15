@@ -117,20 +117,31 @@ export const createSale = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+    let paymentRow: any = null;
     if (initialPayment > 0) {
-      const { error: paymentError } = await supabase.from("sale_payments").insert({
-        user_id: userId,
-        sale_id: row.id,
-        amount: initialPayment,
-        paid_at: new Date().toISOString(),
-        method: null,
-        note: "Initial payment",
-      });
+      const { data: payRow, error: paymentError } = await supabase
+        .from("sale_payments")
+        .insert({
+          user_id: userId,
+          sale_id: row.id,
+          amount: initialPayment,
+          paid_at: new Date().toISOString(),
+          method: null,
+          note: "Initial payment",
+        })
+        .select("*")
+        .single();
       if (paymentError) throw new Error(paymentError.message);
+      paymentRow = payRow;
     }
     const { appendSaleRow, resolveTabName } = await import("@/lib/sheets.server");
     const tab = await resolveTabName(userId);
     await appendSaleRow(tab, row as any);
+    const backup = await import("@/lib/backup.server");
+    backup.withBackup(backup.upsertBackupSale(row, initialPayment), "upsertBackupSale");
+    if (paymentRow) {
+      backup.withBackup(backup.upsertBackupPayment(paymentRow), "upsertBackupPayment");
+    }
     return toDTO(row, initialPayment);
   });
 
@@ -169,6 +180,8 @@ export const updateSale = createServerFn({ method: "POST" })
     const { upsertSaleRow, resolveTabName } = await import("@/lib/sheets.server");
     const tab = await resolveTabName((row as any).user_id);
     await upsertSaleRow(tab, row as any);
+    const backup = await import("@/lib/backup.server");
+    backup.withBackup(backup.upsertBackupSale(row), "upsertBackupSale");
     return toDTO(row);
   });
 
@@ -184,6 +197,8 @@ export const deleteSale = createServerFn({ method: "POST" })
       .single();
     const { error } = await supabase.from("sales").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    const backup = await import("@/lib/backup.server");
+    backup.withBackup(backup.deleteBackupSale(data.id), "deleteBackupSale");
     if (existing?.user_id) {
       const { deleteSaleRow, resolveTabName } = await import("@/lib/sheets.server");
       const tab = await resolveTabName(existing.user_id);
