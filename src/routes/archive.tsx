@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
-import { Input } from "@/components/ui/input";
+import { BackLink, PageTitle, UnderlineSearch } from "@/components/primitives";
 import { useSales } from "@/hooks/use-sales";
-import { isExpired, type Sale } from "@/lib/sale-utils";
+import { isExpired, warrantyEnd, type Sale } from "@/lib/sale-utils";
 
 export const Route = createFileRoute("/archive")({
   head: () => ({
@@ -21,46 +20,46 @@ export const Route = createFileRoute("/archive")({
 function ArchivePage() {
   const { data: sales = [], isLoading } = useSales();
   const [q, setQ] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Sale | null>(null);
 
+  const expiredAll = useMemo(() => sales.filter((s) => isExpired(s)), [sales]);
   const expired = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return sales
-      .filter((s: Sale) => isExpired(s))
+    return expiredAll
       .filter(
-        (s: Sale) =>
+        (s) =>
           !term ||
           s.productName.toLowerCase().includes(term) ||
           s.customerName.toLowerCase().includes(term),
-      );
-  }, [sales, q]);
+      )
+      .sort((a, b) => warrantyEnd(b).getTime() - warrantyEnd(a).getTime());
+  }, [expiredAll, q]);
 
   return (
     <AppLayout>
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Archive</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Sales whose warranty period has ended
-        </p>
-      </div>
-      <div className="relative mt-4">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="h-11 rounded-xl border-border/70 bg-card pl-9 shadow-[var(--shadow-soft)]"
-          placeholder="Search archive"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-      </div>
-      <div className="mt-5">
+      <BackLink to="/more" className="mt-6" />
+      <PageTitle
+        className="mt-4"
+        title="Archive"
+        sub={`${expiredAll.length} sale${expiredAll.length === 1 ? "" : "s"} whose warranty has ended`}
+      />
+
+      <UnderlineSearch
+        className="mt-[22px]"
+        value={q}
+        onChange={setQ}
+        placeholder="Search archive"
+      />
+
+      <div className="mt-1.5">
         <SalesList
           sales={expired}
           emptyText={isLoading ? "Loading…" : "Nothing archived yet."}
-          onRowClick={(s) => { setEditing(s); setDialogOpen(true); }}
+          onRowClick={(s) => setEditing(s)}
         />
       </div>
-      <SaleSheet open={dialogOpen} onOpenChange={setDialogOpen} sale={editing} />
+
+      <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />
     </AppLayout>
   );
 }
