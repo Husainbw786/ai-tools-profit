@@ -20,7 +20,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           description: "text-[12px] font-medium opacity-80",
           icon: "hidden",
           actionButton: "rounded-full bg-primary px-3 py-1 text-[12px] font-bold text-white",
-          cancelButton: "rounded-full bg-secondary px-3 py-1 text-[12px] font-bold text-muted-foreground",
+          cancelButton:
+            "rounded-full bg-secondary px-3 py-1 text-[12px] font-bold text-muted-foreground",
         },
       }}
       {...props}

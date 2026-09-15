@@ -78,17 +78,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "ProfitAI — Resale Ledger" },
       { name: "theme-color", content: "#FAF9F5", media: "(prefers-color-scheme: light)" },
       { name: "theme-color", content: "#262624", media: "(prefers-color-scheme: dark)" },
-      { name: "description", content: "Business Buddy is a mobile-friendly web application for managing side business subscription sales records." },
+      {
+        name: "description",
+        content:
+          "Business Buddy is a mobile-friendly web application for managing side business subscription sales records.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "ai-tools-price-tracker" },
-      { property: "og:description", content: "Business Buddy is a mobile-friendly web application for managing side business subscription sales records." },
+      {
+        property: "og:description",
+        content:
+          "Business Buddy is a mobile-friendly web application for managing side business subscription sales records.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "ai-tools-price-tracker" },
-      { name: "twitter:description", content: "Business Buddy is a mobile-friendly web application for managing side business subscription sales records." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1006a44e-e3ac-4e47-895b-4b34d22e76d1/id-preview-74905dca--1a7e79b8-dadd-4434-9814-51f040fb5abe.lovable.app-1779250358683.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1006a44e-e3ac-4e47-895b-4b34d22e76d1/id-preview-74905dca--1a7e79b8-dadd-4434-9814-51f040fb5abe.lovable.app-1779250358683.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Business Buddy is a mobile-friendly web application for managing side business subscription sales records.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1006a44e-e3ac-4e47-895b-4b34d22e76d1/id-preview-74905dca--1a7e79b8-dadd-4434-9814-51f040fb5abe.lovable.app-1779250358683.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1006a44e-e3ac-4e47-895b-4b34d22e76d1/id-preview-74905dca--1a7e79b8-dadd-4434-9814-51f040fb5abe.lovable.app-1779250358683.png",
+      },
     ],
     links: [
       {

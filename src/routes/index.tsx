@@ -119,7 +119,8 @@ function Index() {
   );
 
   return (
-    <AppLayout rightSlot={periodSelect}>
+    <AppLayout>
+      <div className="mb-4 flex justify-end">{periodSelect}</div>
       <h1 className="sr-only">Dashboard</h1>
 
       <Card
