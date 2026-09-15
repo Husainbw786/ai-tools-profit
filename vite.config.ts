@@ -12,4 +12,9 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  // Build the server for Vercel (Build Output API) instead of the default
+  // Cloudflare Workers target. Override with NITRO_PRESET if deploying elsewhere.
+  nitro: {
+    preset: process.env.NITRO_PRESET || "vercel",
+  },
 });
