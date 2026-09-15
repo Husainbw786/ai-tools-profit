@@ -12,6 +12,7 @@ import {
   Archive,
   RefreshCw,
   ChevronRight,
+  DatabaseBackup,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import { useContacts } from "@/hooks/use-contacts";
 import { supabase } from "@/integrations/supabase/client";
 import { balanceDue, formatMoney } from "@/lib/sale-utils";
 import { backfillSalesToSheet, isAdmin } from "@/lib/sales.functions";
+import { backfillMyBackup } from "@/lib/backup.functions";
 
 export const Route = createFileRoute("/more")({
   head: () => ({
