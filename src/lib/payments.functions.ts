@@ -64,6 +64,8 @@ export const createPayment = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+    const backup = await import("@/lib/backup.server");
+    backup.withBackup(backup.upsertBackupPayment(row), "upsertBackupPayment");
     return toDTO(row);
   });
 
@@ -78,5 +80,7 @@ export const deletePayment = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+    const backup = await import("@/lib/backup.server");
+    backup.withBackup(backup.deleteBackupPayment(data.id), "deleteBackupPayment");
     return { ok: true };
   });
