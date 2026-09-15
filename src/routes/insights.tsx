@@ -1,38 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  endOfMonth,
-  startOfMonth,
-  subMonths,
-} from "date-fns";
-import {
-  Download,
-  FileText,
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Package,
-  Store,
-} from "lucide-react";
+import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PeriodPopover } from "@/components/PeriodPopover";
+import { EmptyState, PageTitle, QuadStat, SectionTitle, TextTabs } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/hooks/use-sales";
-import {
-  filterByRange,
-  formatMoney,
-  formatPct,
-  type DateRange,
-} from "@/lib/sale-utils";
+import { filterByRange, formatMoney, formatPct, type DateRange } from "@/lib/sale-utils";
 import {
   groupByBuyer,
   groupByCustomer,
@@ -42,7 +16,21 @@ import {
 } from "@/lib/insights-utils";
 import { downloadFile, monthlyPnLToCSV, monthlyPnLToPDF } from "@/lib/exports";
 
-type Period = "lifetime" | "this-month" | "last-month" | "last-3" | "last-12";
+type Period = "lifetime" | "this-month" | "last-3" | "last-12";
+type Breakdown = "product" | "customer" | "buyer";
+
+const PERIODS: { id: Period; label: string }[] = [
+  { id: "lifetime", label: "Lifetime" },
+  { id: "this-month", label: "This month" },
+  { id: "last-3", label: "Last 3 months" },
+  { id: "last-12", label: "Last 12 months" },
+];
+
+const BREAKDOWNS: { id: Breakdown; label: string }[] = [
+  { id: "product", label: "Product" },
+  { id: "customer", label: "Customer" },
+  { id: "buyer", label: "Dealer" },
+];
 
 export const Route = createFileRoute("/insights")({
   head: () => ({
@@ -57,27 +45,27 @@ export const Route = createFileRoute("/insights")({
 function InsightsPage() {
   const { data: sales = [] } = useSales();
   const [period, setPeriod] = useState<Period>("lifetime");
+  const [tab, setTab] = useState<Breakdown>("product");
 
   const range: DateRange | null = useMemo(() => {
     const now = new Date();
-    if (period === "this-month")
-      return { from: startOfMonth(now), to: endOfMonth(now) };
-    if (period === "last-month") {
-      const lm = subMonths(now, 1);
-      return { from: startOfMonth(lm), to: endOfMonth(lm) };
-    }
-    if (period === "last-3")
-      return { from: startOfMonth(subMonths(now, 2)), to: endOfMonth(now) };
+    if (period === "this-month") return { from: startOfMonth(now), to: endOfMonth(now) };
+    if (period === "last-3") return { from: startOfMonth(subMonths(now, 2)), to: endOfMonth(now) };
     if (period === "last-12")
       return { from: startOfMonth(subMonths(now, 11)), to: endOfMonth(now) };
     return null;
   }, [period]);
 
   const inRange = useMemo(() => filterByRange(sales, range), [sales, range]);
-
-  const byProduct = useMemo(() => groupByProduct(inRange), [inRange]);
-  const byCustomer = useMemo(() => groupByCustomer(inRange), [inRange]);
-  const byBuyer = useMemo(() => groupByBuyer(inRange), [inRange]);
+  const groups = useMemo(
+    () =>
+      tab === "product"
+        ? groupByProduct(inRange)
+        : tab === "customer"
+          ? groupByCustomer(inRange)
+          : groupByBuyer(inRange),
+    [inRange, tab],
+  );
   const pnl = useMemo(() => monthlyPnL(inRange), [inRange]);
 
   const totals = pnl.reduce(
@@ -91,281 +79,196 @@ function InsightsPage() {
     { revenue: 0, cost: 0, profit: 0, unpaidAmount: 0 },
   );
 
-  const exportCSV = () => {
-    downloadFile(
-      `pnl-${period}.csv`,
-      monthlyPnLToCSV(pnl),
-      "text/csv;charset=utf-8",
-    );
-  };
+  const exportCSV = () =>
+    downloadFile(`pnl-${period}.csv`, monthlyPnLToCSV(pnl), "text/csv;charset=utf-8");
+  const exportPDF = () => monthlyPnLToPDF(pnl, `pnl-${period}.pdf`);
 
-  const exportPDF = async () => {
-    await monthlyPnLToPDF(pnl, `pnl-${period}.pdf`);
-  };
+  const topEarners = [...groups].sort((a, b) => b.profit - a.profit).slice(0, 5);
+  const lowestMargins = [...groups]
+    .filter((g) => g.cost > 0)
+    .sort((a, b) => a.marginPct - b.marginPct)
+    .slice(0, 3);
 
   return (
     <AppLayout>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">
-            Insights
-          </h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Profit breakdown &amp; reports
-          </p>
-        </div>
-        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="h-9 w-auto min-w-[120px] rounded-full border-border/70 bg-card px-3 text-xs font-semibold shadow-[var(--shadow-soft)]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="lifetime">Lifetime</SelectItem>
-            <SelectItem value="this-month">This month</SelectItem>
-            <SelectItem value="last-month">Last month</SelectItem>
-            <SelectItem value="last-3">Last 3 months</SelectItem>
-            <SelectItem value="last-12">Last 12 months</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <PageTitle
+        className="mt-7"
+        title="Insights"
+        sub="Profit breakdown & reports"
+        right={<PeriodPopover options={PERIODS} value={period} onChange={setPeriod} />}
+      />
 
-      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <SummaryCard label="Revenue" value={formatMoney(totals.revenue)} />
-        <SummaryCard label="Cost" value={formatMoney(totals.cost)} />
-        <SummaryCard
+      <div className="tabular mt-[26px] grid grid-cols-2 border-y border-border md:grid-cols-4">
+        <QuadStat index={0} label="Revenue" value={formatMoney(totals.revenue)} />
+        <QuadStat index={1} label="Cost" value={formatMoney(totals.cost)} />
+        <QuadStat
+          index={2}
           label="Profit"
           value={formatMoney(totals.profit)}
-          accent={totals.profit >= 0 ? "success" : "destructive"}
+          valueClassName="text-accent-text"
         />
-        <SummaryCard
+        <QuadStat
+          index={3}
           label="Unpaid"
           value={formatMoney(totals.unpaidAmount)}
-          accent="destructive"
+          valueClassName="text-destructive"
         />
       </div>
 
-      <Card className="mt-5 border-border/70 p-4 shadow-[var(--shadow-card)]">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="font-display text-base font-bold tracking-tight">
-            Monthly P&amp;L
-          </h2>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={exportCSV} disabled={!pnl.length} className="h-8 rounded-full border-border/70 bg-secondary/70 px-3 text-xs font-semibold">
-              <Download className="size-3.5" /> CSV
-            </Button>
-            <Button size="sm" variant="outline" onClick={exportPDF} disabled={!pnl.length} className="h-8 rounded-full border-border/70 bg-secondary/70 px-3 text-xs font-semibold">
-              <FileText className="size-3.5" /> PDF
-            </Button>
+      <SectionTitle
+        className="mt-[30px]"
+        right={
+          <span className="flex gap-1.5">
+            <ExportPill onClick={exportCSV} disabled={!pnl.length}>
+              CSV
+            </ExportPill>
+            <ExportPill onClick={exportPDF} disabled={!pnl.length}>
+              PDF
+            </ExportPill>
+          </span>
+        }
+      >
+        Monthly P&amp;L
+      </SectionTitle>
+      <div className="mt-2">
+        {pnl.length === 0 ? (
+          <EmptyState>No sales in this period.</EmptyState>
+        ) : (
+          pnl.map((r) => (
+            <div key={r.monthKey} className="tabular border-b border-hairline py-3.5">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[14px] font-bold">{r.monthLabel}</span>
+                <span className="rounded-full bg-secondary px-2 py-[3px] text-[11px] font-bold text-muted-foreground">
+                  {r.count} sale{r.count === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-4 text-[12px]">
+                <PnlCell label="REV" value={formatMoney(r.revenue)} />
+                <PnlCell label="COST" value={formatMoney(r.cost)} />
+                <PnlCell
+                  label="PROFIT"
+                  value={formatMoney(r.profit)}
+                  className="font-bold text-accent-text"
+                />
+                <PnlCell
+                  label="UNPAID"
+                  value={r.unpaidAmount > 0 ? formatMoney(r.unpaidAmount) : "—"}
+                  className={r.unpaidAmount > 0 ? "text-destructive" : "text-faint"}
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <h2 className="text-section mt-[30px]">Profit breakdown</h2>
+      <TextTabs className="mt-3" tabs={BREAKDOWNS} value={tab} onChange={setTab} />
+
+      {groups.length === 0 ? (
+        <EmptyState>Nothing to show.</EmptyState>
+      ) : (
+        <div className="md:grid md:grid-cols-2 md:gap-x-10">
+          <div>
+            <div className="text-kicker mt-[22px] text-muted-foreground">TOP EARNERS</div>
+            {topEarners.map((g, i) => (
+              <GroupRow key={g.key} group={g} rank={i + 1} accent="profit" />
+            ))}
+          </div>
+          <div>
+            <div className="text-kicker mt-[26px] text-muted-foreground md:mt-[22px]">
+              LOWEST MARGINS
+            </div>
+            {lowestMargins.length === 0 ? (
+              <div className="py-3.5 text-[13px] text-faint">No data</div>
+            ) : (
+              lowestMargins.map((g) => <GroupRow key={g.key} group={g} accent="margin" />)
+            )}
           </div>
         </div>
-        {pnl.length === 0 ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            No sales in this period.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-2 pr-3 font-medium">Month</th>
-                  <th className="py-2 pr-3 text-right font-medium">Sales</th>
-                  <th className="py-2 pr-3 text-right font-medium">Revenue</th>
-                  <th className="py-2 pr-3 text-right font-medium">Cost</th>
-                  <th className="py-2 pr-3 text-right font-medium">Profit</th>
-                  <th className="py-2 text-right font-medium">Unpaid</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pnl.map((r) => (
-                  <tr key={r.monthKey} className="border-b border-border/50">
-                    <td className="py-2 pr-3 font-medium">{r.monthLabel}</td>
-                    <td className="py-2 pr-3 text-right text-muted-foreground">
-                      {r.count}
-                    </td>
-                    <td className="py-2 pr-3 text-right">{formatMoney(r.revenue)}</td>
-                    <td className="py-2 pr-3 text-right text-muted-foreground">
-                      {formatMoney(r.cost)}
-                    </td>
-                    <td
-                      className={cn(
-                        "py-2 pr-3 text-right font-semibold",
-                        r.profit >= 0 ? "text-success" : "text-destructive",
-                      )}
-                    >
-                      {formatMoney(r.profit)}
-                    </td>
-                    <td className="py-2 text-right">
-                      {r.unpaidAmount > 0 ? (
-                        <span className="text-destructive">
-                          {formatMoney(r.unpaidAmount)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      <h2 className="mt-6 font-display text-xl font-bold tracking-tight">
-        Profit breakdown
-      </h2>
-      <Card className="mt-3 border-border/70 p-4 shadow-[var(--shadow-card)]">
-        <Tabs defaultValue="product">
-          <TabsList className="mb-3 grid h-10 w-full grid-cols-3 rounded-full bg-secondary/70 p-1">
-            <TabsTrigger value="product" className="rounded-full text-xs">
-              <Package className="mr-1 size-3" /> Product
-            </TabsTrigger>
-            <TabsTrigger value="customer" className="rounded-full text-xs">
-              <Users className="mr-1 size-3" /> Customer
-            </TabsTrigger>
-            <TabsTrigger value="buyer" className="rounded-full text-xs">
-              <Store className="mr-1 size-3" /> Dealer
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="product">
-            <GroupSections groups={byProduct} />
-          </TabsContent>
-          <TabsContent value="customer">
-            <GroupSections groups={byCustomer} />
-          </TabsContent>
-          <TabsContent value="buyer">
-            <GroupSections groups={byBuyer} />
-          </TabsContent>
-        </Tabs>
-      </Card>
+      )}
     </AppLayout>
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-  accent,
+function ExportPill({
+  children,
+  onClick,
+  disabled,
 }: {
-  label: string;
-  value: string;
-  accent?: "success" | "destructive";
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <Card className="border-border/70 p-4 shadow-[var(--shadow-card)]">
-      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-1 truncate font-display text-xl font-bold tracking-tight",
-          accent === "success" && "text-primary",
-          accent === "destructive" && "text-destructive",
-        )}
-      >
-        {value}
-      </div>
-    </Card>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-full border border-border px-3 py-1.5 text-[11px] font-bold transition hover:bg-secondary/60 disabled:opacity-40"
+    >
+      {children}
+    </button>
   );
 }
 
-function GroupSections({ groups }: { groups: Group[] }) {
-  if (groups.length === 0) {
-    return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        Nothing to show.
-      </div>
-    );
-  }
-  const topEarners = [...groups].sort((a, b) => b.profit - a.profit).slice(0, 5);
-  const worstMargins = [...groups]
-    .filter((g) => g.cost > 0)
-    .sort((a, b) => a.marginPct - b.marginPct)
-    .slice(0, 5);
-
+function PnlCell({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <GroupList
-        title="TOP EARNERS"
-        icon={<TrendingUp className="size-3.5 text-success" />}
-        rows={topEarners}
-        accent="profit"
-      />
-      <GroupList
-        title="WORST MARGINS"
-        icon={<TrendingDown className="size-3.5 text-destructive" />}
-        rows={worstMargins}
-        accent="margin"
-      />
+    <div className="min-w-0">
+      <div className="text-[10px] font-bold tracking-[0.04em] text-faint">{label}</div>
+      <div className={cn("mt-0.5 truncate font-semibold", className)}>{value}</div>
     </div>
   );
 }
 
-function GroupList({
-  title,
-  icon,
-  rows,
+function GroupRow({
+  group: g,
+  rank,
   accent,
 }: {
-  title: string;
-  icon: React.ReactNode;
-  rows: Group[];
+  group: Group;
+  rank?: number;
   accent: "profit" | "margin";
 }) {
   return (
-    <div>
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {icon}
-        {title}
-      </div>
-      <ul className="space-y-1.5">
-        {rows.length === 0 ? (
-          <li className="rounded border border-dashed py-3 text-center text-xs text-muted-foreground">
-            No data
-          </li>
-        ) : (
-          rows.map((g) => (
-            <li
-              key={g.key}
-              className="flex items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
-            >
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{g.key}</div>
-                <div className="text-[10px] text-muted-foreground">
-                  {g.count} sale{g.count === 1 ? "" : "s"} · {g.units} unit
-                  {g.units === 1 ? "" : "s"}
-                </div>
-              </div>
-              <div className="text-right">
-                {accent === "profit" ? (
-                  <>
-                    <div className="font-display text-sm font-bold">
-                      {formatMoney(g.profit)}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {formatPct(g.marginPct)}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div
-                      className={cn(
-                        "font-display text-sm font-bold",
-                        g.marginPct < 0 ? "text-destructive" : "text-warning",
-                      )}
-                    >
-                      {formatPct(g.marginPct)}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {formatMoney(g.profit)}
-                    </div>
-                  </>
-                )}
-              </div>
-            </li>
-          ))
+    <div className="tabular flex items-center justify-between gap-3 border-b border-hairline py-[13px]">
+      <div className="flex min-w-0 items-center gap-3">
+        {rank !== undefined && (
+          <span className="w-[22px] shrink-0 text-[12px] font-bold text-faint">
+            {String(rank).padStart(2, "0")}
+          </span>
         )}
-      </ul>
+        <div className="min-w-0">
+          <div className="truncate text-[14px] font-bold">{g.key}</div>
+          <div className="mt-px text-[11px] text-muted-foreground">
+            {g.count} sale{g.count === 1 ? "" : "s"} · {g.units} unit{g.units === 1 ? "" : "s"}
+          </div>
+        </div>
+      </div>
+      <div className="shrink-0 text-right">
+        {accent === "profit" ? (
+          <>
+            <div className="text-[14px] font-bold">{formatMoney(g.profit)}</div>
+            <div className="text-[11px] font-semibold text-accent-text">
+              {formatPct(g.marginPct)}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-[14px] font-bold text-warning">{formatPct(g.marginPct)}</div>
+            <div className="text-[11px] font-semibold text-muted-foreground">
+              {formatMoney(g.profit)}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
