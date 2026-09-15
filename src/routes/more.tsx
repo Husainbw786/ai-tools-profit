@@ -67,6 +67,7 @@ function MorePage() {
 
   const isAdminFn = useServerFn(isAdmin);
   const backfillFn = useServerFn(backfillSalesToSheet);
+  const backupBackfillFn = useServerFn(backfillMyBackup);
   const { data: adminData } = useQuery({
     queryKey: ["is-admin"],
     queryFn: () => isAdminFn(),
@@ -76,6 +77,14 @@ function MorePage() {
     mutationFn: () => backfillFn(),
     onSuccess: (r) =>
       toast.success(`Synced ${r.total} sales across ${r.users} user(s)`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const backupBackfill = useMutation({
+    mutationFn: () => backupBackfillFn(),
+    onSuccess: (r) =>
+      toast.success(
+        `Backup synced: ${r.saleCount} sales, ${r.paymentCount} payments, ${r.contactCount} contacts`,
+      ),
     onError: (e: Error) => toast.error(e.message),
   });
 
