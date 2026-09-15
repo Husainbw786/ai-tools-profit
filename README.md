@@ -33,3 +33,42 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Deploy to Vercel
+
+The app is a TanStack Start (Vite + Nitro) app. `vite.config.ts` builds it with the
+Nitro `vercel` preset, so Vercel picks up the Build Output in `.vercel/output` with
+no framework preset (`vercel.json` sets `framework: null`).
+
+### Option A: Vercel dashboard (recommended)
+
+1. In Vercel, **Add New > Project > Import** this GitHub repository.
+2. Leave the framework preset as **Other**. Build command `npm run build` (from `vercel.json`).
+3. Add these **Environment Variables** (Production and Preview):
+
+   | Name | Value |
+   | --- | --- |
+   | `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+   | `SUPABASE_PUBLISHABLE_KEY` | your `sb_publishable_...` key |
+   | `SUPABASE_SERVICE_ROLE_KEY` | your Supabase **secret** (service role) key |
+   | `ADMIN_USER_ID` | (optional) your Supabase auth user id, unlocks admin actions |
+
+   The browser-side values (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) are
+   read from the committed `.env` at build time; override them in Vercel if you
+   point the app at a different Supabase project.
+4. Deploy. Every push to the connected branch redeploys.
+
+### Option B: GitHub Actions
+
+`.github/workflows/deploy-vercel.yml` deploys with the Vercel CLI. Add repository
+secrets `VERCEL_TOKEN` (required) plus `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY` (written to the Vercel project on each run), then run
+the workflow from the Actions tab or push to `main`.
+
+### Supabase setup
+
+- Apply the SQL in `supabase/migrations/` to your project (Supabase CLI: `supabase db push`).
+- Authentication > URL Configuration: set **Site URL** to your Vercel URL and add it
+  to **Redirect URLs** so email confirmation links land on the deployed app.
+- Google sign-in uses Supabase's own Google provider (Authentication > Providers).
+  Email/password works out of the box.
