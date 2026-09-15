@@ -5,15 +5,16 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
+ * Design system definition — ProfitAI v3 ("paper & terracotta").
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
  *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
+ * Values are the exact hex colours from the design handoff and are kept
+ * as hex on purpose so the app matches the prototype 1:1. Dark mode is
+ * driven by the `.dark` class on <html> (see use-theme.ts).
  *
- * To add a new semantic color:
+ * To add a new semantic colour:
  * 1. Add the variable to :root (light value) and .dark (dark value)
  * 2. Register it in @theme inline as --color-<name>: var(--<name>)
  */
@@ -40,11 +41,17 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-text: var(--accent-text);
+  --color-faint: var(--faint);
+  --color-hairline: var(--hairline);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
   --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -62,99 +69,129 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --shadow-fab: var(--shadow-fab);
+  --shadow-popover: var(--shadow-popover);
+  --shadow-chip: var(--shadow-chip);
 }
 
 :root {
-  --radius: 0.875rem;
-  /* Resale Ledger — Paper & Moss Green */
-  --background: oklch(0.975 0.008 95);
-  --foreground: oklch(0.20 0.02 150);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.20 0.02 150);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.20 0.02 150);
-  --primary: oklch(0.48 0.13 145);
-  --primary-foreground: oklch(0.99 0.01 145);
-  --primary-glow: oklch(0.72 0.18 142);
-  --secondary: oklch(0.95 0.01 120);
-  --secondary-foreground: oklch(0.25 0.03 150);
-  --muted: oklch(0.955 0.008 120);
-  --muted-foreground: oklch(0.50 0.02 150);
-  --accent: oklch(0.48 0.13 145);
-  --accent-foreground: oklch(0.99 0.01 145);
-  --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.99 0.01 0);
-  --success: oklch(0.62 0.16 150);
-  --warning: oklch(0.74 0.15 75);
-  --warning-foreground: oklch(0.25 0.05 75);
-  --border: oklch(0.91 0.008 120);
-  --input: oklch(0.92 0.008 120);
-  --ring: oklch(0.48 0.13 145);
-  --gradient-primary: linear-gradient(135deg, oklch(0.55 0.15 145), oklch(0.42 0.13 148));
-  --gradient-hero: linear-gradient(135deg, oklch(0.18 0.02 150) 0%, oklch(0.20 0.03 150) 60%, oklch(0.24 0.06 148) 100%);
-  --shadow-soft: 0 1px 2px oklch(0.20 0.02 150 / 0.04), 0 4px 14px oklch(0.20 0.02 150 / 0.06);
-  --shadow-elegant: 0 14px 36px -16px oklch(0.30 0.10 145 / 0.30);
-  --shadow-card: 0 1px 0 oklch(0.92 0.01 120 / 1), 0 8px 22px -10px oklch(0.20 0.02 150 / 0.08);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0.005 250);
-  --sidebar-foreground: oklch(0.20 0.05 260);
-  --sidebar-primary: oklch(0.23 0.07 265);
-  --sidebar-primary-foreground: oklch(0.985 0.005 250);
-  --sidebar-accent: oklch(0.95 0.015 250);
-  --sidebar-accent-foreground: oklch(0.25 0.07 265);
-  --sidebar-border: oklch(0.91 0.012 255);
-  --sidebar-ring: oklch(0.55 0.13 255);
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --radius: 12px;
+
+  /* Paper */
+  --background: #faf9f5;
+  --foreground: #29261b;
+  --card: #fffdf9;
+  --card-foreground: #29261b;
+  --popover: #fffdf9;
+  --popover-foreground: #29261b;
+
+  /* Terracotta */
+  --primary: #d97757;
+  --primary-foreground: #ffffff;
+  --accent: #d97757;
+  --accent-foreground: #ffffff;
+  --accent-text: #c15f3c;
+  --ring: #d97757;
+
+  /* Chips & text scale */
+  --secondary: #f1eee6;
+  --secondary-foreground: #6f6b5e;
+  --muted: #f1eee6;
+  --muted-foreground: #6f6b5e;
+  --faint: #a39f93;
+
+  /* Rules */
+  --border: #e3dfd3;
+  --input: #e3dfd3;
+  --hairline: #ece8dd;
+
+  /* Status */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: #fbe9e7;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+  --warning-soft: #fbf0dc;
+  --success: #16a34a;
+  --success-soft: #e8f4ea;
+
+  --shadow-fab: 0 8px 20px rgba(217, 119, 87, 0.35);
+  --shadow-popover: 0 12px 32px rgba(41, 38, 27, 0.16);
+  --shadow-chip: 0 1px 3px rgba(41, 38, 27, 0.12);
+
+  --chart-1: #d97757;
+  --chart-2: #29261b;
+  --chart-3: #6f6b5e;
+  --chart-4: #a39f93;
+  --chart-5: #e3dfd3;
+
+  --sidebar: #faf9f5;
+  --sidebar-foreground: #29261b;
+  --sidebar-primary: #d97757;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1eee6;
+  --sidebar-accent-foreground: #29261b;
+  --sidebar-border: #e3dfd3;
+  --sidebar-ring: #d97757;
+
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
   --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
-  /* Dark theme — deep neutral with bright moss-green accents for clarity */
-  --background: oklch(0.14 0.012 150);
-  --foreground: oklch(0.985 0.008 145);
-  --card: oklch(0.205 0.014 150);
-  --card-foreground: oklch(0.985 0.008 145);
-  --popover: oklch(0.22 0.014 150);
-  --popover-foreground: oklch(0.985 0.008 145);
-  --primary: oklch(0.82 0.18 145);
-  --primary-foreground: oklch(0.14 0.03 150);
-  --primary-glow: oklch(0.88 0.19 142);
-  --secondary: oklch(0.28 0.018 150);
-  --secondary-foreground: oklch(0.97 0.01 145);
-  --muted: oklch(0.26 0.016 150);
-  --muted-foreground: oklch(0.82 0.018 145);
-  --accent: oklch(0.82 0.18 145);
-  --accent-foreground: oklch(0.14 0.03 150);
-  --destructive: oklch(0.74 0.20 25);
-  --destructive-foreground: oklch(0.14 0.02 25);
-  --success: oklch(0.80 0.18 150);
-  --warning: oklch(0.85 0.17 80);
-  --warning-foreground: oklch(0.18 0.04 75);
-  --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.82 0.18 145);
-  --gradient-primary: linear-gradient(135deg, oklch(0.78 0.18 145), oklch(0.62 0.16 148));
-  --gradient-hero: linear-gradient(135deg, oklch(0.18 0.02 150) 0%, oklch(0.22 0.04 150) 55%, oklch(0.30 0.09 148) 100%);
-  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.35), 0 4px 14px oklch(0 0 0 / 0.4);
-  --shadow-elegant: 0 14px 36px -16px oklch(0 0 0 / 0.7);
-  --shadow-card: 0 1px 0 oklch(1 0 0 / 0.05), 0 10px 28px -14px oklch(0 0 0 / 0.6);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.05 262);
-  --sidebar-foreground: oklch(0.97 0.01 250);
-  --sidebar-primary: oklch(0.55 0.13 255);
-  --sidebar-primary-foreground: oklch(0.97 0.01 250);
-  --sidebar-accent: oklch(0.26 0.05 262);
-  --sidebar-accent-foreground: oklch(0.97 0.01 250);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.55 0.13 255);
+  --background: #262624;
+  --foreground: #eceae3;
+  --card: #2e2e2b;
+  --card-foreground: #eceae3;
+  --popover: #2e2e2b;
+  --popover-foreground: #eceae3;
+
+  --primary: #d97757;
+  --primary-foreground: #ffffff;
+  --accent: #d97757;
+  --accent-foreground: #ffffff;
+  --accent-text: #e08a6c;
+  --ring: #d97757;
+
+  --secondary: #30302e;
+  --secondary-foreground: #a39f93;
+  --muted: #30302e;
+  --muted-foreground: #a39f93;
+  --faint: #6f6b5e;
+
+  --border: #3b3936;
+  --input: #3b3936;
+  --hairline: #33312e;
+
+  --destructive: #f87171;
+  --destructive-foreground: #262624;
+  --destructive-soft: rgba(248, 113, 113, 0.12);
+  --warning: #fbbf24;
+  --warning-foreground: #262624;
+  --warning-soft: rgba(251, 191, 36, 0.12);
+  --success: #4ade80;
+  --success-soft: rgba(74, 222, 128, 0.12);
+
+  --shadow-fab: 0 8px 20px rgba(217, 119, 87, 0.35);
+  --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-chip: 0 1px 3px rgba(0, 0, 0, 0.4);
+
+  --chart-1: #d97757;
+  --chart-2: #eceae3;
+  --chart-3: #a39f93;
+  --chart-4: #6f6b5e;
+  --chart-5: #3b3936;
+
+  --sidebar: #262624;
+  --sidebar-foreground: #eceae3;
+  --sidebar-primary: #d97757;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #30302e;
+  --sidebar-accent-foreground: #eceae3;
+  --sidebar-border: #3b3936;
+  --sidebar-ring: #d97757;
 }
 
 @layer base {
@@ -162,16 +199,94 @@
     border-color: var(--color-border);
   }
 
+  html {
+    background-color: var(--color-background);
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-body);
+    font-size: 15px;
     -webkit-font-smoothing: antialiased;
-    font-feature-settings: "cv11", "ss01";
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
+    font-weight: 500;
     letter-spacing: -0.02em;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font-family: inherit;
+  }
+
+  ::placeholder {
+    color: var(--color-faint);
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Display type ramp from the design spec. */
+@utility text-hero {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 54px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility text-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 34px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+@utility text-section {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+@utility text-sheet-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* 11px/700 letter-spaced kicker, e.g. "PRODUCT 1", "TOP EARNERS". */
+@utility text-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* Sheet slide-up used by the sale drawer. */
+@keyframes sheet-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
