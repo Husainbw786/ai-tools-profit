@@ -26,13 +26,20 @@ export type Sale = {
 
 export const isRefunded = (s: Sale) => !!s.refundedAt;
 
-export const effectiveRevenue = (s: Sale) =>
-  isRefunded(s) ? s.sellPrice - (s.refundAmount ?? s.sellPrice) : s.sellPrice;
+const qty = (s: Sale) => s.quantity || 1;
 
-export const profit = (s: Sale) => effectiveRevenue(s) - s.buyPrice;
+// Total billed for the line item (per-unit price × quantity)
+export const lineTotal = (s: Sale) => s.sellPrice * qty(s);
+
+export const lineCost = (s: Sale) => s.buyPrice * qty(s);
+
+export const effectiveRevenue = (s: Sale) =>
+  isRefunded(s) ? lineTotal(s) - (s.refundAmount ?? lineTotal(s)) : lineTotal(s);
+
+export const profit = (s: Sale) => effectiveRevenue(s) - lineCost(s);
 
 export const balanceDue = (s: Sale) =>
-  Math.max(0, s.sellPrice - (s.amountPaid ?? 0));
+  Math.max(0, lineTotal(s) - (s.amountPaid ?? 0));
 
 export const marginPct = (s: Sale) =>
   s.buyPrice > 0 ? ((s.sellPrice - s.buyPrice) / s.buyPrice) * 100 : 0;
