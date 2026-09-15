@@ -10,6 +10,7 @@ import {
   profit,
   warrantyEnd,
   balanceDue,
+  lineTotal,
   type Sale,
 } from "@/lib/sale-utils";
 
