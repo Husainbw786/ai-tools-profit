@@ -104,7 +104,7 @@ export function buildWhatsAppMessage(s: Sale): string {
     s.hasWarranty
       ? `Warranty: ${fmtDate(new Date(s.warrantyStart))} → ${fmtDate(end)}`
       : `Start: ${fmtDate(new Date(s.warrantyStart))}`,
-    `Amount: ${formatMoney(s.sellPrice)}`,
+    `Amount: ${formatMoney(lineTotal(s))}`,
     statusLine,
     "",
     "_Sent via ProfitAI_",
@@ -129,7 +129,7 @@ export function buildReminderMessage(s: Sale): string {
     `This is a gentle reminder for the pending payment on:`,
     `*${s.productName}*${s.quantity > 1 ? ` × ${s.quantity}` : ""}`,
     `Sold on: ${fmtDate(new Date(s.warrantyStart))}`,
-    `Total: ${formatMoney(s.sellPrice)}`,
+    `Total: ${formatMoney(lineTotal(s))}`,
     paid > 0 ? `Paid so far: ${formatMoney(paid)}` : null,
     `*Balance due: ${formatMoney(due)}*`,
     "",
