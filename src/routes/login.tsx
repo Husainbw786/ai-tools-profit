@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,6 +142,16 @@ function LoginPage() {
             ? "Don't have an account? Sign up"
             : "Already have an account? Sign in"}
         </button>
+
+        <p className="mt-9 text-center text-[12px] text-faint">
+          <Link to="/privacy" className="transition hover:text-foreground">
+            Privacy Policy
+          </Link>
+          <span className="px-2">·</span>
+          <Link to="/terms" className="transition hover:text-foreground">
+            Terms of Service
+          </Link>
+        </p>
       </div>
     </div>
   );
