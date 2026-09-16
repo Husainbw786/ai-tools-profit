@@ -1,20 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { differenceInCalendarDays, endOfMonth, format, startOfMonth, subMonths } from "date-fns";
-import { ArrowRight, ArrowUp } from "lucide-react";
+import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
+import { ArrowRight, Clock, FileText, MessageCircle, Settings, Target } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
 import { ProfitTrendChart } from "@/components/ProfitTrendChart";
 import { PeriodPopover } from "@/components/PeriodPopover";
-import { Stat, StatGrid } from "@/components/primitives";
-import { SkeletonChart, SkeletonHero, SkeletonRows, SkeletonStats } from "@/components/skeletons";
+import {
+  Bone,
+  SkeletonChart,
+  SkeletonHeroCard,
+  SkeletonRows,
+  SkeletonTiles,
+} from "@/components/skeletons";
 import { useAuth } from "@/hooks/use-auth";
 import { useSales } from "@/hooks/use-sales";
 import { useMonthlyGoal } from "@/hooks/use-goal";
 import { cn } from "@/lib/utils";
 import {
   balanceDue,
+  daysRemaining,
   effectiveRevenue,
   filterByRange,
   formatMoney,
@@ -44,6 +50,19 @@ const PERIODS: { id: Period; label: string }[] = [
   { id: "last-month", label: "Last month" },
 ];
 
+/** "Good morning" / "afternoon" / "evening" by the viewer's local clock. */
+function greetingFor(hour: number) {
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+/** First name from sign-up metadata, else the email's local part. */
+function firstNameOf(user: { email?: string; user_metadata?: Record<string, unknown> } | null) {
+  const full = user?.user_metadata?.full_name;
+  if (typeof full === "string" && full.trim()) return full.trim().split(/\s+/)[0];
+  const local = user?.email?.split("@")[0];
+  return local || null;
+}
+
 function Index() {
   const { data: sales = [], isPending } = useSales();
   const { user } = useAuth();
@@ -69,11 +88,6 @@ function Index() {
 
   const unpaid = useMemo(() => sales.filter((s) => balanceDue(s) > 0 && !isRefunded(s)), [sales]);
   const dueAmount = unpaid.reduce((a, s) => a + balanceDue(s), 0);
-  const unpaidOnlyCount = unpaid.filter((s) => s.paymentStatus === "unpaid").length;
-  const partialCount = unpaid.filter((s) => s.paymentStatus === "partial").length;
-  const oldestDays = unpaid.length
-    ? Math.max(...unpaid.map((s) => differenceInCalendarDays(now, new Date(s.warrantyStart))))
-    : 0;
 
   const { goal, setGoal } = useMonthlyGoal();
   const thisMonthProfit = useMemo(
@@ -88,30 +102,54 @@ function Index() {
   const goalPct = goal > 0 ? Math.min(100, (thisMonthProfit / goal) * 100) : 0;
 
   const active = useMemo(() => sales.filter((s) => !isExpired(s)), [sales]);
+  const expiringSoon = active.filter((s) => s.hasWarranty && daysRemaining(s) <= 7).length;
   const recent = useMemo(
     () => [...active].sort((a, b) => b.warrantyStart.localeCompare(a.warrantyStart)).slice(0, 4),
     [active],
   );
 
   const initial = (user?.email?.[0] ?? "P").toUpperCase();
+  const firstName = firstNameOf(user);
+  const greeting = `${greetingFor(now.getHours())}${firstName ? `, ${firstName}` : ""}`;
+  const todayLine = [
+    format(now, "EEEE, d MMMM"),
+    `${active.length} active`,
+    expiringSoon ? `${expiringSoon} expiring this week` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const header = (
+    <div className="flex items-center justify-between pt-5 md:pt-2">
+      <Link
+        to="/more"
+        aria-label="More"
+        className="grid size-9 place-items-center rounded-full bg-primary text-[14px] font-extrabold text-white md:invisible"
+      >
+        {initial}
+      </Link>
+      <Link
+        to="/more"
+        aria-label="Settings"
+        className="grid size-9 place-items-center rounded-full bg-secondary text-muted-foreground transition hover:text-foreground md:invisible"
+      >
+        <Settings className="size-[17px]" strokeWidth={2.2} />
+      </Link>
+    </div>
+  );
 
   if (isPending) {
     return (
       <AppLayout>
         <h1 className="sr-only">Dashboard</h1>
-        <div className="flex items-center justify-between pt-5 md:pt-2">
-          <Link
-            to="/more"
-            aria-label="More"
-            className="grid size-9 place-items-center rounded-full bg-primary text-[14px] font-extrabold text-white md:invisible"
-          >
-            {initial}
-          </Link>
-          <PeriodPopover options={PERIODS} value={period} onChange={setPeriod} />
+        {header}
+        <div className="mt-6" aria-hidden>
+          <Bone className="h-[28px] w-[240px] rounded-[10px]" />
+          <Bone className="mt-2.5 h-[13px] w-[200px]" />
         </div>
-        <SkeletonHero className="mt-[34px]" />
-        <SkeletonStats className="mt-8" />
-        <SkeletonChart />
+        <SkeletonHeroCard className="mt-[22px]" />
+        <SkeletonTiles className="mt-2.5" />
+        <SkeletonChart className="pt-[26px]" />
         <SkeletonRows className="mt-8" count={3} />
       </AppLayout>
     );
@@ -119,67 +157,68 @@ function Index() {
 
   return (
     <AppLayout>
-      <h1 className="sr-only">Dashboard</h1>
+      {header}
 
-      <div className="flex items-center justify-between pt-5 md:pt-2">
-        <Link
-          to="/more"
-          aria-label="More"
-          className="grid size-9 place-items-center rounded-full bg-primary text-[14px] font-extrabold text-white md:invisible"
-        >
-          {initial}
-        </Link>
-        <PeriodPopover options={PERIODS} value={period} onChange={setPeriod} />
+      <div className="mt-6">
+        <h1 className="text-[28px] leading-none">{greeting}</h1>
+        <p className="mt-1.5 text-[13px] text-muted-foreground">{todayLine}</p>
       </div>
 
-      <div className="mt-[34px] text-[13px] font-semibold text-muted-foreground">Net profit</div>
-      <div className="text-hero mt-2">{formatMoney(totalProfit)}</div>
-      <div className="mt-3 inline-flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-accent-text">
-        <ArrowUp className="size-3.5" strokeWidth={2.5} />
-        {formatMoney(thisMonthProfit)} this month
-        {goal > 0 && (
-          <span className="font-medium text-faint">· {goalPct.toFixed(0)}% of goal</span>
-        )}
-      </div>
-
-      <StatGrid cols={3} className="mt-8">
-        <Stat label="Revenue" value={formatMoney(totalRevenue)} />
-        <Stat label="Cost" value={formatMoney(totalCost)} />
-        <Stat
-          label="Sales"
-          value={
-            totalUnits !== inRange.length ? (
-              <>
-                {inRange.length}{" "}
-                <span className="text-[12px] font-semibold text-faint">· {totalUnits} units</span>
-              </>
-            ) : (
-              inRange.length
-            )
-          }
-        />
-      </StatGrid>
-
-      {dueAmount > 0 && (
-        <Link
-          to="/collections"
-          className="flex items-center justify-between gap-3 border-b border-border py-[18px]"
-        >
-          <div className="min-w-0">
-            <div className="tabular text-[15px] font-bold">{formatMoney(dueAmount)} to collect</div>
-            <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
-              {unpaidOnlyCount} unpaid · {partialCount} partial · oldest {oldestDays} days
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-[12px] font-bold text-white">
-            Remind
+      <section
+        aria-label="Net profit"
+        className="mt-[22px] rounded-[22px] bg-surface-hero px-5 pb-[18px] pt-5"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[12px] font-semibold text-muted-foreground">Net profit</span>
+          <PeriodPopover
+            options={PERIODS}
+            value={period}
+            onChange={setPeriod}
+            className="bg-surface-hero-chip px-2.5 py-[5px] text-[11px] font-bold"
+          />
+        </div>
+        <div className="text-hero-card mt-2.5">{formatMoney(totalProfit)}</div>
+        <div className="tabular mt-3.5 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+          <span>
+            Rev <strong className="text-foreground">{formatMoney(totalRevenue)}</strong>
           </span>
-        </Link>
-      )}
+          <span>
+            Cost <strong className="text-foreground">{formatMoney(totalCost)}</strong>
+          </span>
+          <span>
+            Sales <strong className="text-foreground">{inRange.length}</strong>
+            {totalUnits !== inRange.length && (
+              <span className="text-faint"> · {totalUnits} units</span>
+            )}
+          </span>
+        </div>
+      </section>
 
-      <ProfitTrendChart sales={sales} />
+      <div className="mt-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+        <Tile
+          to="/collections"
+          icon={<MessageCircle className="size-[18px]" strokeWidth={2.2} />}
+          value={formatMoney(dueAmount)}
+          sub={dueAmount > 0 ? `to collect · ${unpaid.length}` : "nothing outstanding"}
+          tone={dueAmount > 0 ? "alert" : "ok"}
+        />
+        <GoalTile goal={goal} setGoal={setGoal} earned={thisMonthProfit} pct={goalPct} />
+        <Tile
+          to="/sales"
+          icon={<FileText className="size-[18px]" strokeWidth={2.2} />}
+          value={active.length}
+          sub="active subscriptions"
+        />
+        <Tile
+          to="/sales"
+          icon={<Clock className="size-[18px]" strokeWidth={2.2} />}
+          value={expiringSoon}
+          sub="expiring this week"
+          tone="warn"
+        />
+      </div>
 
-      <GoalBlock goal={goal} setGoal={setGoal} earned={thisMonthProfit} pct={goalPct} />
+      <ProfitTrendChart sales={sales} className="pt-[26px]" />
 
       <div className="mt-[30px] flex items-baseline justify-between">
         <h2 className="text-section">Active</h2>
@@ -203,7 +242,59 @@ function Index() {
   );
 }
 
-function GoalBlock({
+type Tone = "default" | "alert" | "ok" | "warn";
+
+const TILE_BASE =
+  "flex min-h-[118px] flex-col justify-between rounded-[22px] p-[18px] text-left transition";
+
+const ICON_TONE: Record<Tone, string> = {
+  default: "text-accent-text",
+  alert: "text-destructive",
+  ok: "text-success",
+  warn: "text-warning",
+};
+
+/** One of the 2×2 dashboard tiles: icon + arrow on top, big numeral + caption below. */
+function Tile({
+  to,
+  icon,
+  value,
+  sub,
+  tone = "default",
+}: {
+  to: "/collections" | "/sales";
+  icon: React.ReactNode;
+  value: React.ReactNode;
+  sub: React.ReactNode;
+  tone?: Tone;
+}) {
+  const alert = tone === "alert";
+  return (
+    <Link
+      to={to}
+      className={cn(
+        TILE_BASE,
+        alert ? "bg-destructive-soft" : "border border-border bg-card hover:border-faint",
+      )}
+    >
+      <div className={cn("flex items-center justify-between", ICON_TONE[tone])}>
+        {icon}
+        <ArrowRight className="size-3.5" strokeWidth={2.4} />
+      </div>
+      <div>
+        <div
+          className={cn("text-tile", alert && "text-destructive", tone === "ok" && "text-success")}
+        >
+          {value}
+        </div>
+        <div className="mt-0.5 text-[12px] font-semibold text-muted-foreground">{sub}</div>
+      </div>
+    </Link>
+  );
+}
+
+/** Monthly goal tile with inline editing (progress bar + "earned of goal ✎"). */
+function GoalTile({
   goal,
   setGoal,
   earned,
@@ -216,71 +307,76 @@ function GoalBlock({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
-  const month = format(new Date(), "MMMM");
-  const reached = goal > 0 && earned >= goal;
 
   const save = () => {
     setGoal(Number(draft) || 0);
     setEditing(false);
   };
+  const startEdit = () => {
+    setDraft(goal ? String(goal) : "");
+    setEditing(true);
+  };
 
   return (
-    <div className="mt-7 border-y border-border py-[18px]">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[13px] font-semibold text-muted-foreground">{month} goal</span>
-        {editing ? (
-          <span className="flex gap-1.5">
-            <input
-              autoFocus
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={draft}
-              placeholder="e.g. 15000"
-              onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
-              onKeyDown={(e) => e.key === "Enter" && save()}
-              className="tabular h-8 w-[110px] rounded-[8px] border border-border bg-transparent px-2.5 text-[13px] font-bold text-foreground outline-none focus:border-primary"
-            />
+    <div className={cn(TILE_BASE, "border border-border bg-card")}>
+      <div className="flex items-center justify-between text-accent-text">
+        <Target className="size-[18px]" strokeWidth={2.2} />
+        <span className="tabular text-[12px] font-bold">
+          {goal > 0 ? `${pct.toFixed(0)}%` : "Goal"}
+        </span>
+      </div>
+      {editing ? (
+        <div>
+          <input
+            autoFocus
+            inputMode="numeric"
+            pattern="[0-9]*"
+            aria-label="Monthly profit goal"
+            value={draft}
+            placeholder="e.g. 15000"
+            onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            className="tabular h-[34px] w-full rounded-[8px] border border-primary bg-transparent px-2.5 text-[14px] font-bold text-foreground outline-none"
+          />
+          <div className="mt-1.5 flex gap-1.5">
             <button
               type="button"
               onClick={save}
-              className="h-8 rounded-[8px] bg-primary px-3 text-[12px] font-bold text-white"
+              className="h-[30px] flex-1 rounded-[8px] bg-primary text-[12px] font-bold text-white"
             >
               Save
             </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(goal ? String(goal) : "");
-              setEditing(true);
-            }}
-            className="tabular text-[13px] font-bold"
-          >
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="h-[30px] rounded-[8px] border border-border px-2.5 text-[12px] font-bold text-muted-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={startEdit} className="w-full text-left">
+          <div className="h-1 overflow-hidden rounded-full bg-hairline">
+            <div
+              className="h-full rounded-full bg-primary transition-[width]"
+              style={{ width: `${goal > 0 ? pct : 0}%` }}
+            />
+          </div>
+          <div className="tabular mt-2 text-[12px] font-semibold text-muted-foreground">
             {goal > 0 ? (
               <>
-                {formatMoney(earned)}{" "}
-                <span className="font-semibold text-faint">/ {formatMoney(goal)} ✎</span>
+                {formatMoney(earned)} of {formatMoney(goal)} goal ✎
               </>
             ) : (
-              <span className="font-semibold text-accent-text">Set a goal ✎</span>
+              <span className="text-accent-text">Set a goal ✎</span>
             )}
-          </button>
-        )}
-      </div>
-      <div className="mt-3.5 h-1 overflow-hidden rounded-full bg-hairline">
-        <div
-          className={cn("h-full rounded-full bg-primary transition-[width]")}
-          style={{ width: `${goal > 0 ? pct : 0}%` }}
-        />
-      </div>
-      <div className="mt-2 text-[12px] text-muted-foreground">
-        {goal <= 0
-          ? "Set a monthly profit goal to track progress."
-          : reached
-            ? "Goal reached"
-            : `${pct.toFixed(0)}% there — ${formatMoney(Math.max(0, goal - earned))} to go in ${month}`}
-      </div>
+          </div>
+        </button>
+      )}
     </div>
   );
 }

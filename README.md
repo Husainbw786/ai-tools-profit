@@ -22,6 +22,8 @@ display numerals, hairline rules instead of cards). Everything visual is driven 
 variables in `src/styles.css`; dark mode is the `.dark` class on `<html>`, persisted under the
 `profitai-theme` localStorage key by `src/hooks/use-theme.ts`. Shared layout idioms (text tabs,
 chips, segmented pills, stat rules, underline search) live in `src/components/primitives.tsx`.
+The dashboard is the one screen that uses filled surfaces: the net-profit card (`--surface-hero`,
+`--surface-hero-chip`) and the 2×2 tile grid under it. WhatsApp actions use the brand green (`--whatsapp`).
 
 ### Put the server next to the database
 

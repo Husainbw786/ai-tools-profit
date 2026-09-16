@@ -81,3 +81,31 @@ export function SkeletonChart({ className }: { className?: string }) {
     </div>
   );
 }
+
+/** Placeholder for the dashboard's net-profit card. */
+export function SkeletonHeroCard({ className }: { className?: string }) {
+  return (
+    <div
+      aria-hidden
+      className={cn("rounded-[22px] bg-surface-hero px-5 pb-[18px] pt-5", className)}
+    >
+      <div className="flex items-center justify-between">
+        <Bone className="h-[12px] w-[64px] bg-surface-hero-chip" />
+        <Bone className="h-[22px] w-[84px] rounded-full bg-surface-hero-chip" />
+      </div>
+      <Bone className="mt-3 h-[46px] w-[200px] rounded-[12px] bg-surface-hero-chip" />
+      <Bone className="mt-4 h-[12px] w-[220px] bg-surface-hero-chip" />
+    </div>
+  );
+}
+
+/** Placeholder for the dashboard's 2×2 tile grid. */
+export function SkeletonTiles({ className }: { className?: string }) {
+  return (
+    <div aria-hidden className={cn("grid grid-cols-2 gap-2.5 md:grid-cols-4", className)}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Bone key={i} className="min-h-[118px] rounded-[22px]" />
+      ))}
+    </div>
+  );
+}

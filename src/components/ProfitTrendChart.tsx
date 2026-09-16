@@ -3,13 +3,13 @@ import { format, startOfMonth, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatCompactMoney, formatMoney, profit, type Sale } from "@/lib/sale-utils";
 
-type Props = { sales: Sale[] };
+type Props = { sales: Sale[]; className?: string };
 
 /**
  * Six-month profit trend as tap-to-select bars. Default bar = chip colour,
  * peak month = ink, selected month (defaults to the current one) = terracotta.
  */
-export function ProfitTrendChart({ sales }: Props) {
+export function ProfitTrendChart({ sales, className }: Props) {
   const data = useMemo(() => {
     const now = new Date();
     const buckets: { key: string; label: string; profit: number }[] = [];
@@ -31,7 +31,7 @@ export function ProfitTrendChart({ sales }: Props) {
   const peakIndex = peakValue > 0 ? data.findIndex((d) => d.profit === peakValue) : -1;
 
   return (
-    <div className="pt-[22px]">
+    <div className={cn("pt-[22px]", className)}>
       <div className="flex items-baseline justify-between">
         <span className="text-[13px] font-semibold text-muted-foreground">Last 6 months</span>
         <span className="text-[12px] font-semibold text-faint">

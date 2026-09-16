@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { differenceInCalendarDays } from "date-fns";
-import { MessageCircle } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { BackLink, EmptyState, PageTitle } from "@/components/primitives";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { Bone, SkeletonRows } from "@/components/skeletons";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/hooks/use-sales";
@@ -108,9 +108,9 @@ function CollectionsPage() {
                     href={reminderWhatsAppUrl(s)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-[7px] text-[12px] font-bold text-white transition hover:bg-primary/90"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-[7px] text-[12px] font-bold text-white transition hover:bg-whatsapp/90"
                   >
-                    <MessageCircle className="size-[13px]" strokeWidth={2.2} />
+                    <WhatsAppIcon />
                     Send reminder
                   </a>
                 </div>
