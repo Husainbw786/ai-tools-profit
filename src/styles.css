@@ -44,6 +44,7 @@
   --color-accent-text: var(--accent-text);
   --color-faint: var(--faint);
   --color-hairline: var(--hairline);
+  --color-panel: var(--panel);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-soft: var(--destructive-soft);
@@ -86,6 +87,7 @@
   --card-foreground: #29261b;
   --popover: #fffdf9;
   --popover-foreground: #29261b;
+  --panel: #f1eee6;
 
   /* Terracotta */
   --primary: #d97757;
@@ -147,6 +149,7 @@
   --card-foreground: #eceae3;
   --popover: #2e2e2b;
   --popover-foreground: #eceae3;
+  --panel: #1f1f1d;
 
   --primary: #d97757;
   --primary-foreground: #ffffff;
