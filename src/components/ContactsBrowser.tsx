@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { MessageCircle } from "lucide-react";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { Chip, EmptyState, Stat, StatGrid, UnderlineSearch } from "@/components/primitives";
 import { SkeletonRows } from "@/components/skeletons";
 import { useSales } from "@/hooks/use-sales";
@@ -200,9 +200,9 @@ function ContactRow({
           rel="noopener noreferrer"
           title="WhatsApp"
           aria-label={`WhatsApp ${row.name}`}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground transition hover:text-foreground"
+          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-[#25D366] transition hover:border-[#25D366] hover:bg-[#25D366]/10"
         >
-          <MessageCircle className="size-[15px]" strokeWidth={2.2} />
+          <WhatsAppIcon className="size-[18px]" />
         </a>
       )}
     </li>
