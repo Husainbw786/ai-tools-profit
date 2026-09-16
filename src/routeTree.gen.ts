@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SalesRouteImport } from './routes/sales'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LinksRouteImport } from './routes/links'
@@ -22,9 +24,19 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DealerNameRouteImport } from './routes/dealer.$name'
 import { Route as CustomerNameRouteImport } from './routes/customer.$name'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SalesRoute = SalesRouteImport.update({
   id: '/sales',
   path: '/sales',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MoreRoute = MoreRouteImport.update({
@@ -93,7 +105,9 @@ export interface FileRoutesByFullPath {
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/privacy': typeof PrivacyRoute
   '/sales': typeof SalesRoute
+  '/terms': typeof TermsRoute
   '/customer/$name': typeof CustomerNameRoute
   '/dealer/$name': typeof DealerNameRoute
 }
@@ -107,7 +121,9 @@ export interface FileRoutesByTo {
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/privacy': typeof PrivacyRoute
   '/sales': typeof SalesRoute
+  '/terms': typeof TermsRoute
   '/customer/$name': typeof CustomerNameRoute
   '/dealer/$name': typeof DealerNameRoute
 }
@@ -122,7 +138,9 @@ export interface FileRoutesById {
   '/links': typeof LinksRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/privacy': typeof PrivacyRoute
   '/sales': typeof SalesRoute
+  '/terms': typeof TermsRoute
   '/customer/$name': typeof CustomerNameRoute
   '/dealer/$name': typeof DealerNameRoute
 }
@@ -138,7 +156,9 @@ export interface FileRouteTypes {
     | '/links'
     | '/login'
     | '/more'
+    | '/privacy'
     | '/sales'
+    | '/terms'
     | '/customer/$name'
     | '/dealer/$name'
   fileRoutesByTo: FileRoutesByTo
@@ -152,7 +172,9 @@ export interface FileRouteTypes {
     | '/links'
     | '/login'
     | '/more'
+    | '/privacy'
     | '/sales'
+    | '/terms'
     | '/customer/$name'
     | '/dealer/$name'
   id:
@@ -166,7 +188,9 @@ export interface FileRouteTypes {
     | '/links'
     | '/login'
     | '/more'
+    | '/privacy'
     | '/sales'
+    | '/terms'
     | '/customer/$name'
     | '/dealer/$name'
   fileRoutesById: FileRoutesById
@@ -181,18 +205,34 @@ export interface RootRouteChildren {
   LinksRoute: typeof LinksRoute
   LoginRoute: typeof LoginRoute
   MoreRoute: typeof MoreRoute
+  PrivacyRoute: typeof PrivacyRoute
   SalesRoute: typeof SalesRoute
+  TermsRoute: typeof TermsRoute
   CustomerNameRoute: typeof CustomerNameRoute
   DealerNameRoute: typeof DealerNameRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sales': {
       id: '/sales'
       path: '/sales'
       fullPath: '/sales'
       preLoaderRoute: typeof SalesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/more': {
@@ -285,7 +325,9 @@ const rootRouteChildren: RootRouteChildren = {
   LinksRoute: LinksRoute,
   LoginRoute: LoginRoute,
   MoreRoute: MoreRoute,
+  PrivacyRoute: PrivacyRoute,
   SalesRoute: SalesRoute,
+  TermsRoute: TermsRoute,
   CustomerNameRoute: CustomerNameRoute,
   DealerNameRoute: DealerNameRoute,
 }
