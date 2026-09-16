@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { balanceDue, formatMoney, isExpired, isRefunded } from "@/lib/sale-utils";
 import { backfillSalesToSheet, isAdmin } from "@/lib/sales.functions";
 import { backfillMyBackup } from "@/lib/backup.functions";
+import { friendlyError } from "@/lib/request-error";
 
 export const Route = createFileRoute("/more")({
   head: () => ({
@@ -32,7 +33,8 @@ const THEMES = [
 ];
 
 function MorePage() {
-  const { data: sales = [] } = useSales();
+  const { data: sales = [], isPending } = useSales();
+  const count = (label: string) => (isPending ? "…" : label);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -62,7 +64,7 @@ function MorePage() {
   const backfill = useMutation({
     mutationFn: () => backfillFn(),
     onSuccess: (r) => toast.success(`Synced ${r.total} sales across ${r.users} user(s)`),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
   const backupBackfill = useMutation({
     mutationFn: () => backupBackfillFn(),
@@ -70,7 +72,7 @@ function MorePage() {
       toast.success(
         `Backup synced: ${r.saleCount} sales, ${r.paymentCount} payments, ${r.contactCount} contacts`,
       ),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
 
   const signOut = async () => {
@@ -86,22 +88,22 @@ function MorePage() {
     {
       to: "/customers",
       label: "Customers",
-      sub: `${customerCount} ${customerCount === 1 ? "person" : "people"}`,
+      sub: count(`${customerCount} ${customerCount === 1 ? "person" : "people"}`),
     },
     {
       to: "/dealers",
       label: "Dealers",
-      sub: `${dealerCount} ${dealerCount === 1 ? "dealer" : "dealers"}`,
+      sub: count(`${dealerCount} ${dealerCount === 1 ? "dealer" : "dealers"}`),
     },
     {
       to: "/collections",
       label: "Dues",
-      sub: totalDue > 0 ? `${formatMoney(totalDue)} outstanding` : "All clear",
+      sub: count(totalDue > 0 ? `${formatMoney(totalDue)} outstanding` : "All clear"),
     },
     {
       to: "/archive",
       label: "Archive",
-      sub: `${expiredCount} expired sale${expiredCount === 1 ? "" : "s"}`,
+      sub: count(`${expiredCount} expired sale${expiredCount === 1 ? "" : "s"}`),
     },
     { to: "/links", label: "Shared links", sub: "Collaborate privately" },
   ];

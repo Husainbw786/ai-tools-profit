@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { Bone } from "@/components/skeletons";
+import { friendlyError } from "@/lib/request-error";
 import { usePaymentsForSale, useCreatePayment, useDeletePayment } from "@/hooks/use-payments";
 import { formatDate, formatMoney, lineTotal, type Sale } from "@/lib/sale-utils";
+
+const Calendar = lazy(() =>
+  import("@/components/ui/calendar").then((m) => ({ default: m.Calendar })),
+);
 
 export function PaymentsSection({ sale }: { sale: Sale }) {
   const { data: payments = [], isLoading } = usePaymentsForSale(sale.id);
@@ -43,7 +48,7 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
       setPaidAt(new Date());
       setDetails(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(friendlyError(e, "Could not record the payment."));
     }
   };
 
@@ -52,7 +57,7 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
       await deleteMut.mutateAsync(id);
       toast.success("Payment removed");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toast.error(friendlyError(e, "Could not remove the payment."));
     }
   };
 
@@ -156,13 +161,15 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={paidAt}
-                    onSelect={(d) => d && setPaidAt(d)}
-                    initialFocus
-                    className={cn("pointer-events-auto p-3")}
-                  />
+                  <Suspense fallback={<Bone className="m-3 h-[300px] w-[260px]" />}>
+                    <Calendar
+                      mode="single"
+                      selected={paidAt}
+                      onSelect={(d) => d && setPaidAt(d)}
+                      initialFocus
+                      className={cn("pointer-events-auto p-3")}
+                    />
+                  </Suspense>
                 </PopoverContent>
               </Popover>
               <Input

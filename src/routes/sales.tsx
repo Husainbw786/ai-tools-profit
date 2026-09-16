@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
 import { PageTitle, Pill, TextTabs, UnderlineSearch } from "@/components/primitives";
+import { SkeletonRows } from "@/components/skeletons";
 import { useSales } from "@/hooks/use-sales";
 import { openNewSale } from "@/lib/new-sale-bus";
 import {
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/sales")({
 type StatusFilter = "all" | "paid" | "partial" | "unpaid";
 
 function SalesPage() {
-  const { data: sales = [], isLoading } = useSales();
+  const { data: sales = [], isPending } = useSales();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [editing, setEditing] = useState<Sale | null>(null);
@@ -86,11 +87,15 @@ function SalesPage() {
 
       <TextTabs className="mt-5" tabs={tabs} value={status} onChange={setStatus} />
 
-      <SalesList
-        sales={active}
-        emptyText={isLoading ? "Loading…" : "No active sales match."}
-        onRowClick={(s) => setEditing(s)}
-      />
+      {isPending ? (
+        <SkeletonRows count={6} />
+      ) : (
+        <SalesList
+          sales={active}
+          emptyText="No active sales match."
+          onRowClick={(s) => setEditing(s)}
+        />
+      )}
 
       <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />
     </AppLayout>

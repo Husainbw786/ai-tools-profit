@@ -4,6 +4,36 @@ import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
+type Claims = { sub?: string; exp?: number } & Record<string, unknown>;
+
+// A verified token stays verified until it expires, so a warm instance only
+// pays the network verification once per token instead of once per request.
+const claimsCache = new Map<string, { claims: Claims; expiresAt: number }>();
+const CLAIMS_CACHE_MAX = 500;
+
+async function verifiedClaims(
+  token: string,
+  verify: () => Promise<{ data: { claims: Claims } | null; error: unknown }>,
+): Promise<Claims | null> {
+  const now = Date.now();
+  const hit = claimsCache.get(token);
+  if (hit && hit.expiresAt > now) return hit.claims;
+  if (hit) claimsCache.delete(token);
+
+  const { data, error } = await verify();
+  if (error || !data?.claims) return null;
+  const claims = data.claims;
+  const expiresAt = typeof claims.exp === "number" ? claims.exp * 1000 : now + 5 * 60_000;
+  if (expiresAt > now) {
+    if (claimsCache.size >= CLAIMS_CACHE_MAX) {
+      const oldest = claimsCache.keys().next().value;
+      if (oldest) claimsCache.delete(oldest);
+    }
+    claimsCache.set(token, { claims, expiresAt });
+  }
+  return claims;
+}
+
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
     const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -53,20 +83,20 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
       },
     });
 
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) {
+    const claims = await verifiedClaims(token, () => supabase.auth.getClaims(token));
+    if (!claims) {
       throw new Error("Unauthorized: Invalid token");
     }
 
-    if (!data.claims.sub) {
+    if (!claims.sub) {
       throw new Error("Unauthorized: No user ID found in token");
     }
 
     return next({
       context: {
         supabase,
-        userId: data.claims.sub,
-        claims: data.claims,
+        userId: claims.sub,
+        claims,
       },
     });
   },

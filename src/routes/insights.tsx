@@ -4,6 +4,7 @@ import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
 import { PeriodPopover } from "@/components/PeriodPopover";
 import { EmptyState, PageTitle, QuadStat, SectionTitle, TextTabs } from "@/components/primitives";
+import { SkeletonRows, SkeletonStats } from "@/components/skeletons";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/hooks/use-sales";
 import { filterByRange, formatMoney, formatPct, type DateRange } from "@/lib/sale-utils";
@@ -43,7 +44,7 @@ export const Route = createFileRoute("/insights")({
 });
 
 function InsightsPage() {
-  const { data: sales = [] } = useSales();
+  const { data: sales = [], isPending } = useSales();
   const [period, setPeriod] = useState<Period>("lifetime");
   const [tab, setTab] = useState<Breakdown>("product");
 
@@ -88,6 +89,16 @@ function InsightsPage() {
     .filter((g) => g.cost > 0)
     .sort((a, b) => a.marginPct - b.marginPct)
     .slice(0, 3);
+
+  if (isPending) {
+    return (
+      <AppLayout>
+        <PageTitle className="mt-7" title="Insights" sub="Profit breakdown & reports" />
+        <SkeletonStats cols={4} className="mt-[26px]" />
+        <SkeletonRows className="mt-8" count={4} />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

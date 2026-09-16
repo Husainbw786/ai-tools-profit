@@ -1,21 +1,15 @@
-import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { useContext } from "react";
+import { AuthContext } from "@/components/AuthProvider";
 
+/**
+ * Reads the shared auth state from `AuthProvider` (mounted in the root route).
+ * Returns `{ session, user, loading }`.
+ */
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  return { session, user: session?.user ?? null, loading };
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    // Outside the provider (should not happen in the app); behave as signed out.
+    return { session: null, user: null, loading: false } as const;
+  }
+  return { session: ctx.session, user: ctx.session?.user ?? null, loading: ctx.loading };
 }

@@ -4,6 +4,7 @@ import { SalesList } from "@/components/SalesList";
 import { SaleSheet } from "@/components/SaleSheet";
 import { ContactEditor } from "@/components/ContactEditor";
 import { BackLink, Kicker, QuadStat } from "@/components/primitives";
+import { SkeletonRows } from "@/components/skeletons";
 import { useSales } from "@/hooks/use-sales";
 import { telLink, waLink, type ContactKind } from "@/lib/contacts-utils";
 import {
@@ -19,7 +20,7 @@ import {
 
 /** Shared body for /customer/$name and /dealer/$name. */
 export function ContactDetail({ kind, name }: { kind: ContactKind; name: string }) {
-  const { data: sales = [] } = useSales();
+  const { data: sales = [], isPending } = useSales();
   const [editing, setEditing] = useState<Sale | null>(null);
 
   const rows = useMemo(() => {
@@ -99,14 +100,20 @@ export function ContactDetail({ kind, name }: { kind: ContactKind; name: string 
       <ContactEditor kind={kind} name={name} />
 
       <h2 className="text-section mt-7">Purchase history</h2>
-      <SalesList
-        sales={rows}
-        partyOf={kind === "customer" ? "dealer" : "customer"}
-        emptyText={
-          kind === "customer" ? "No sales for this customer." : "No sales sourced from this dealer."
-        }
-        onRowClick={(s) => setEditing(s)}
-      />
+      {isPending ? (
+        <SkeletonRows count={3} />
+      ) : (
+        <SalesList
+          sales={rows}
+          partyOf={kind === "customer" ? "dealer" : "customer"}
+          emptyText={
+            kind === "customer"
+              ? "No sales for this customer."
+              : "No sales sourced from this dealer."
+          }
+          onRowClick={(s) => setEditing(s)}
+        />
+      )}
 
       <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />
     </AppLayout>

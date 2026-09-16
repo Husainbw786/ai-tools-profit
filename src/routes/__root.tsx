@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import {
   Outlet,
   Link,
@@ -10,8 +11,16 @@ import {
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
-import { useEffect } from "react";
+import { AuthProvider } from "@/components/AuthProvider";
+import { useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  CACHE_MAX_AGE,
+  cacheUser,
+  createQueryPersister,
+  rememberCacheUser,
+  shouldDehydrateQuery,
+} from "@/lib/query-persister";
 
 function NotFoundComponent() {
   return (
@@ -74,7 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "ProfitAI — Resale Ledger" },
       { name: "theme-color", content: "#FAF9F5", media: "(prefers-color-scheme: light)" },
       { name: "theme-color", content: "#262624", media: "(prefers-color-scheme: dark)" },
@@ -84,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Business Buddy is a mobile-friendly web application for managing side business subscription sales records.",
       },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "ai-tools-price-tracker" },
+      { property: "og:title", content: "ProfitAI — Resale Ledger" },
       {
         property: "og:description",
         content:
@@ -93,7 +102,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "ai-tools-price-tracker" },
+      { name: "twitter:title", content: "ProfitAI — Resale Ledger" },
       {
         name: "twitter:description",
         content:
@@ -150,25 +159,66 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // On the client, successful ledger queries are persisted to localStorage so a
+  // reopen paints the last known data immediately and refreshes in place.
+  const persister = useMemo(() => createQueryPersister(), []);
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthListener />
+  const inner = (
+    <AuthProvider>
+      <AuthListener persister={persister} />
       <Outlet />
       <Toaster />
-    </QueryClientProvider>
+    </AuthProvider>
+  );
+
+  if (!persister) {
+    return <QueryClientProvider client={queryClient}>{inner}</QueryClientProvider>;
+  }
+  return (
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: CACHE_MAX_AGE,
+        buster: cacheUser() ?? "anon",
+        dehydrateOptions: { shouldDehydrateQuery },
+      }}
+    >
+      {inner}
+    </PersistQueryClientProvider>
   );
 }
 
-function AuthListener() {
+function AuthListener({ persister }: { persister: ReturnType<typeof createQueryPersister> }) {
   const qc = useQueryClient();
   const router = useRouter();
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      qc.invalidateQueries();
-      router.invalidate();
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // Token refreshes happen every hour; they must not trigger a refetch storm.
+      if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+        if (session?.user?.id && !cacheUser()) rememberCacheUser(session.user.id);
+        return;
+      }
+      if (event === "SIGNED_OUT") {
+        rememberCacheUser(null);
+        qc.clear();
+        void persister?.removeClient();
+        router.invalidate();
+        return;
+      }
+      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        const uid = session?.user?.id ?? null;
+        if (uid && cacheUser() !== uid) {
+          // A different account: never show another user's cached ledger.
+          qc.clear();
+          void persister?.removeClient();
+          rememberCacheUser(uid);
+        }
+        qc.invalidateQueries();
+        router.invalidate();
+      }
     });
     return () => sub.subscription.unsubscribe();
-  }, [qc, router]);
+  }, [qc, router, persister]);
   return null;
 }

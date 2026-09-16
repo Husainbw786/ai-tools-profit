@@ -85,6 +85,8 @@ async function gw(path: string, init: RequestInit = {}) {
   const res = await fetch(`${GATEWAY}${path}`, {
     ...init,
     headers: { ...authHeaders(), ...(init.headers || {}) },
+    // Never let a slow connector gateway hold a request open indefinitely.
+    signal: AbortSignal.timeout(8_000),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -122,9 +124,14 @@ function encodeRange(range: string) {
   return range;
 }
 
+// Tabs seen by this warm instance; saves a full tab listing per write.
+const knownTabs = new Set<string>();
+
 export async function ensureUserTab(tabName: string) {
+  if (knownTabs.has(tabName)) return;
   const tabs = await listTabs();
   if (!tabs.has(tabName)) await addTab(tabName);
+  knownTabs.add(tabName);
 }
 
 async function findRowIndex(tabName: string, id: string): Promise<number | null> {

@@ -16,5 +16,8 @@ export default defineConfig({
   // Cloudflare Workers target. Override with NITRO_PRESET if deploying elsewhere.
   nitro: {
     preset: process.env.NITRO_PRESET || "vercel",
+    // Give server functions headroom on Vercel (default is 10s on Hobby). The
+    // wrapper's types only know `preset`, but it forwards the whole object to Nitro.
+    ...({ vercel: { functions: { maxDuration: 30 } } } as Record<string, unknown>),
   },
 });

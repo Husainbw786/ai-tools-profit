@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { MessageCircle } from "lucide-react";
 import { Chip, EmptyState, Stat, StatGrid, UnderlineSearch } from "@/components/primitives";
+import { SkeletonRows } from "@/components/skeletons";
 import { useSales } from "@/hooks/use-sales";
 import { useContacts } from "@/hooks/use-contacts";
 import {
@@ -35,7 +36,7 @@ export function initials(name: string) {
 }
 
 export function ContactsBrowser({ kind }: { kind: ContactKind }) {
-  const { data: sales = [] } = useSales();
+  const { data: sales = [], isPending } = useSales();
   const { data: contacts = [] } = useContacts();
   const [q, setQ] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -98,7 +99,7 @@ export function ContactsBrowser({ kind }: { kind: ContactKind }) {
   return (
     <div>
       <StatGrid cols={3} className="mt-[26px] py-4">
-        <Stat label={noun} value={totals.count} />
+        <Stat label={noun} value={isPending ? "…" : totals.count} />
         <Stat label="Revenue" value={formatMoney(totals.revenue)} />
         <Stat
           label="Outstanding"
@@ -142,7 +143,8 @@ export function ContactsBrowser({ kind }: { kind: ContactKind }) {
       )}
 
       <ul className="mt-2">
-        {filtered.length === 0 && <EmptyState>No matches.</EmptyState>}
+        {isPending && <SkeletonRows count={5} />}
+        {!isPending && filtered.length === 0 && <EmptyState>No matches.</EmptyState>}
         {filtered.map((r) => (
           <ContactRow key={r.nameKey} row={r} kind={kind} />
         ))}
