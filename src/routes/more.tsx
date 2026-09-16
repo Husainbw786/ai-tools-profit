@@ -81,7 +81,7 @@ function MorePage() {
   };
 
   const links: Array<{
-    to: "/customers" | "/dealers" | "/collections" | "/archive" | "/links";
+    to: "/customers" | "/dealers" | "/collections" | "/archive";
     label: string;
     sub: string;
   }> = [
@@ -105,7 +105,6 @@ function MorePage() {
       label: "Archive",
       sub: count(`${expiredCount} expired sale${expiredCount === 1 ? "" : "s"}`),
     },
-    { to: "/links", label: "Shared links", sub: "Collaborate privately" },
   ];
 
   return (
