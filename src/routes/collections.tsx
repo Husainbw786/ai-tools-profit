@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { differenceInCalendarDays } from "date-fns";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { BackLink, EmptyState, PageTitle } from "@/components/primitives";
-import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { Bone, SkeletonRows } from "@/components/skeletons";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/hooks/use-sales";
@@ -110,7 +110,7 @@ function CollectionsPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-[7px] text-[12px] font-bold text-white transition hover:bg-whatsapp/90"
                   >
-                    <WhatsAppIcon />
+                    <WhatsAppIcon className="size-[14px]" />
                     Send reminder
                   </a>
                 </div>
