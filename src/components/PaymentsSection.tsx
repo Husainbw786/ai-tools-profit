@@ -21,7 +21,10 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
   const deleteMut = useDeletePayment(sale.id);
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-  const balance = Math.max(0, lineTotal(sale) - totalPaid);
+  // Sales marked paid before the payments ledger existed have no rows; they
+  // count as settled rather than as owing the full amount.
+  const legacyPaid = !isLoading && sale.paymentStatus === "paid" && payments.length === 0;
+  const balance = legacyPaid ? 0 : Math.max(0, lineTotal(sale) - totalPaid);
 
   const [amount, setAmount] = useState<number>(0);
   const [paidAt, setPaidAt] = useState<Date>(new Date());
@@ -32,6 +35,10 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
   const add = async () => {
     if (!amount || amount <= 0) {
       toast.error("Enter an amount");
+      return;
+    }
+    if (amount > balance) {
+      toast.error(`Only ${formatMoney(balance)} is due on this sale`);
       return;
     }
     try {
@@ -66,8 +73,11 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
       <div className="flex items-baseline justify-between">
         <span className="text-[15px] font-bold">Payments</span>
         <span className="tabular text-[12px] text-muted-foreground">
-          Paid <strong className="text-success">{formatMoney(totalPaid)}</strong> of{" "}
-          {formatMoney(lineTotal(sale))}
+          Paid{" "}
+          <strong className="text-success">
+            {formatMoney(legacyPaid ? lineTotal(sale) : totalPaid)}
+          </strong>{" "}
+          of {formatMoney(lineTotal(sale))}
         </span>
       </div>
 
@@ -75,7 +85,9 @@ export function PaymentsSection({ sale }: { sale: Sale }) {
         <div className="py-2.5 text-[12px] text-faint">Loading…</div>
       ) : payments.length === 0 ? (
         <div className="border-b border-hairline py-2.5 text-[13px] text-faint">
-          No payments recorded yet
+          {legacyPaid
+            ? "Marked as paid · no individual payments recorded"
+            : "No payments recorded yet"}
         </div>
       ) : (
         <ul>

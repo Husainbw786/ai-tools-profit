@@ -16,7 +16,15 @@ const HEADERS = [
   "created_at",
   "updated_at",
   "payment_status",
+  "quantity",
+  "amount_paid",
+  "refunded_at",
+  "refund_amount",
+  "refund_reason",
 ];
+
+// Last column letter of the sheet, kept in step with HEADERS.
+const LAST_COL = String.fromCharCode("A".charCodeAt(0) + HEADERS.length - 1);
 
 type SaleRow = {
   id: string;
@@ -34,6 +42,10 @@ type SaleRow = {
   created_at: string;
   updated_at: string;
   payment_status?: string | null;
+  quantity?: number | null;
+  refunded_at?: string | null;
+  refund_amount?: number | string | null;
+  refund_reason?: string | null;
 };
 
 function authHeaders() {
@@ -61,7 +73,7 @@ function asText(v: string | null | undefined): string {
   return /^[=+\-@]/.test(s) ? `'${s}` : s;
 }
 
-function rowFor(sale: SaleRow): (string | number | boolean)[] {
+function rowFor(sale: SaleRow, amountPaid = 0): (string | number | boolean)[] {
   return [
     sale.id,
     sale.product_name,
@@ -78,6 +90,11 @@ function rowFor(sale: SaleRow): (string | number | boolean)[] {
     sale.created_at,
     sale.updated_at,
     sale.payment_status ?? "paid",
+    sale.quantity ?? 1,
+    Number(amountPaid),
+    sale.refunded_at ?? "",
+    sale.refund_amount != null ? Number(sale.refund_amount) : "",
+    sale.refund_reason ?? "",
   ];
 }
 
@@ -107,9 +124,12 @@ async function addTab(name: string) {
       requests: [{ addSheet: { properties: { title: name } } }],
     }),
   });
-  // Write header row
+  await writeHeaders(name);
+}
+
+async function writeHeaders(name: string) {
   await gw(
-    `/spreadsheets/${sheetId()}/values/${encodeRange(`${name}!A1:O1`)}?valueInputOption=RAW`,
+    `/spreadsheets/${sheetId()}/values/${encodeRange(`${quoteTab(name)}!A1:${LAST_COL}1`)}?valueInputOption=RAW`,
     { method: "PUT", body: JSON.stringify({ values: [HEADERS] }) },
   );
 }
@@ -131,6 +151,9 @@ export async function ensureUserTab(tabName: string) {
   if (knownTabs.has(tabName)) return;
   const tabs = await listTabs();
   if (!tabs.has(tabName)) await addTab(tabName);
+  // Existing tabs were created with fewer columns; refresh the header row once
+  // per warm instance so new columns are labelled.
+  else await writeHeaders(tabName);
   knownTabs.add(tabName);
 }
 
@@ -143,31 +166,31 @@ async function findRowIndex(tabName: string, id: string): Promise<number | null>
   return null;
 }
 
-export async function appendSaleRow(tabName: string, sale: SaleRow) {
+export async function appendSaleRow(tabName: string, sale: SaleRow, amountPaid = 0) {
   try {
     await ensureUserTab(tabName);
     await gw(
-      `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A:O:append?valueInputOption=USER_ENTERED`,
-      { method: "POST", body: JSON.stringify({ values: [rowFor(sale)] }) },
+      `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A:${LAST_COL}:append?valueInputOption=USER_ENTERED`,
+      { method: "POST", body: JSON.stringify({ values: [rowFor(sale, amountPaid)] }) },
     );
   } catch (e) {
     console.warn("[sheets] appendSaleRow failed:", (e as Error).message);
   }
 }
 
-export async function upsertSaleRow(tabName: string, sale: SaleRow) {
+export async function upsertSaleRow(tabName: string, sale: SaleRow, amountPaid = 0) {
   try {
     await ensureUserTab(tabName);
     const idx = await findRowIndex(tabName, sale.id);
     if (idx === null) {
       await gw(
-        `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A:O:append?valueInputOption=USER_ENTERED`,
-        { method: "POST", body: JSON.stringify({ values: [rowFor(sale)] }) },
+        `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A:${LAST_COL}:append?valueInputOption=USER_ENTERED`,
+        { method: "POST", body: JSON.stringify({ values: [rowFor(sale, amountPaid)] }) },
       );
     } else {
       await gw(
-        `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A${idx}:O${idx}?valueInputOption=USER_ENTERED`,
-        { method: "PUT", body: JSON.stringify({ values: [rowFor(sale)] }) },
+        `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A${idx}:${LAST_COL}${idx}?valueInputOption=USER_ENTERED`,
+        { method: "PUT", body: JSON.stringify({ values: [rowFor(sale, amountPaid)] }) },
       );
     }
   } catch (e) {
@@ -179,26 +202,36 @@ export async function deleteSaleRow(tabName: string, id: string) {
   try {
     const idx = await findRowIndex(tabName, id);
     if (idx === null) return;
-    await gw(`/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A${idx}:O${idx}:clear`, {
-      method: "POST",
-      body: "{}",
-    });
+    await gw(
+      `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A${idx}:${LAST_COL}${idx}:clear`,
+      {
+        method: "POST",
+        body: "{}",
+      },
+    );
   } catch (e) {
     console.warn("[sheets] deleteSaleRow failed:", (e as Error).message);
   }
 }
 
-export async function replaceUserSheet(tabName: string, sales: SaleRow[]) {
+export async function replaceUserSheet(
+  tabName: string,
+  sales: SaleRow[],
+  paidBySale: Map<string, number> = new Map(),
+) {
   await ensureUserTab(tabName);
-  // Clear A2:N (keep headers), then write all rows
-  await gw(`/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A2:O:clear`, {
+  // Clear everything below the headers, then write all rows
+  await gw(`/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A2:${LAST_COL}:clear`, {
     method: "POST",
     body: "{}",
   });
   if (sales.length === 0) return;
   await gw(
-    `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A2:O${sales.length + 1}?valueInputOption=USER_ENTERED`,
-    { method: "PUT", body: JSON.stringify({ values: sales.map(rowFor) }) },
+    `/spreadsheets/${sheetId()}/values/${quoteTab(tabName)}!A2:${LAST_COL}${sales.length + 1}?valueInputOption=USER_ENTERED`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ values: sales.map((s) => rowFor(s, paidBySale.get(s.id) ?? 0)) }),
+    },
   );
 }
 

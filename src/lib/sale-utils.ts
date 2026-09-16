@@ -33,15 +33,32 @@ export const lineTotal = (s: Sale) => s.sellPrice * qty(s);
 
 export const lineCost = (s: Sale) => s.buyPrice * qty(s);
 
-export const effectiveRevenue = (s: Sale) =>
-  isRefunded(s) ? lineTotal(s) - (s.refundAmount ?? lineTotal(s)) : lineTotal(s);
+// Money actually collected from the customer. A sale marked "paid" counts as
+// fully collected even when it predates the payments ledger (no payment rows);
+// otherwise it is the sum of recorded payments, capped at the line total.
+export const amountCollected = (s: Sale) =>
+  s.paymentStatus === "paid" ? lineTotal(s) : Math.min(lineTotal(s), s.amountPaid ?? 0);
+
+// Revenue kept after refunds. A refunded sale keeps only what was collected
+// minus what was returned; a cancelled unpaid sale therefore contributes 0.
+export const effectiveRevenue = (s: Sale) => {
+  if (!isRefunded(s)) return lineTotal(s);
+  const collected = amountCollected(s);
+  return Math.max(0, collected - (s.refundAmount ?? collected));
+};
 
 export const profit = (s: Sale) => effectiveRevenue(s) - lineCost(s);
 
-export const balanceDue = (s: Sale) => Math.max(0, lineTotal(s) - (s.amountPaid ?? 0));
+// Outstanding balance. Nothing is due on a refunded sale or one marked paid.
+export const balanceDue = (s: Sale) =>
+  isRefunded(s) ? 0 : Math.max(0, lineTotal(s) - amountCollected(s));
 
-export const marginPct = (s: Sale) =>
-  s.buyPrice > 0 ? ((s.sellPrice - s.buyPrice) / s.buyPrice) * 100 : 0;
+// Profit as a percentage of cost, net of refunds. Equals (sell − buy) / buy
+// for a normal sale; quantity cancels out.
+export const marginPct = (s: Sale) => {
+  const cost = lineCost(s);
+  return cost > 0 ? (profit(s) / cost) * 100 : 0;
+};
 
 export const formatPct = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(0)}%`;
 
