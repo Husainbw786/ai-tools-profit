@@ -100,3 +100,19 @@ the workflow from the Actions tab or push to `main`.
   `supabase/scripts/import_from_backup.sql`, and run it once in the SQL editor.
 - Rows copied in some other way that still carry the old users' ids:
   `supabase/scripts/remap_user_ids.sql` rewrites them to the new ids.
+
+### Demo data
+
+`supabase/scripts/seed_demo_data.sql` fills **one** account with a year-plus of
+invented sales, payments, contacts and a shared workspace, so every screen has
+something to show when you demo the app. Set `demo_email` at the top of the file
+to the account you demo from (it must already exist under Authentication >
+Users), paste the file into the SQL editor and run it.
+
+Every row it writes carries a fixed id prefix (`d0000000-…`), so it is safe to
+re-run — it deletes what it wrote last time and nothing else. Real sales,
+payments and contacts are never read or changed. To take the demo data out
+again, set `wipe_only := true` at the top and run the file once more.
+
+The dashboard's monthly goal lives in the browser (`localStorage`), not the
+database, so set it once in the browser you demo from.
