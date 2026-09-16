@@ -45,6 +45,9 @@
   --color-faint: var(--faint);
   --color-hairline: var(--hairline);
   --color-panel: var(--panel);
+  --color-surface-hero: var(--surface-hero);
+  --color-surface-hero-chip: var(--surface-hero-chip);
+  --color-whatsapp: var(--whatsapp);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-soft: var(--destructive-soft);
@@ -88,6 +91,8 @@
   --popover: #fffdf9;
   --popover-foreground: #29261b;
   --panel: #f1eee6;
+  --surface-hero: #f1eee6;
+  --surface-hero-chip: #fffdf9;
 
   /* Terracotta */
   --primary: #d97757;
@@ -118,6 +123,9 @@
   --warning-soft: #fbf0dc;
   --success: #16a34a;
   --success-soft: #e8f4ea;
+
+  /* Brand */
+  --whatsapp: #25d366;
 
   --shadow-fab: 0 8px 20px rgba(217, 119, 87, 0.35);
   --shadow-popover: 0 12px 32px rgba(41, 38, 27, 0.16);
@@ -150,6 +158,8 @@
   --popover: #2e2e2b;
   --popover-foreground: #eceae3;
   --panel: #1f1f1d;
+  --surface-hero: #34342f;
+  --surface-hero-chip: rgba(255, 255, 255, 0.08);
 
   --primary: #d97757;
   --primary-foreground: #ffffff;
@@ -176,6 +186,8 @@
   --warning-soft: rgba(251, 191, 36, 0.12);
   --success: #4ade80;
   --success-soft: rgba(74, 222, 128, 0.12);
+
+  --whatsapp: #25d366;
 
   --shadow-fab: 0 8px 20px rgba(217, 119, 87, 0.35);
   --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
@@ -248,6 +260,26 @@
   font-size: 54px;
   letter-spacing: -0.03em;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 46px numeral inside the dashboard's net-profit card. */
+@utility text-hero-card {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 46px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 26px numeral on the dashboard tiles. */
+@utility text-tile {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 

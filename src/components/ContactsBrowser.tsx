@@ -200,7 +200,7 @@ function ContactRow({
           rel="noopener noreferrer"
           title="WhatsApp"
           aria-label={`WhatsApp ${row.name}`}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-[#25D366] transition hover:border-[#25D366] hover:bg-[#25D366]/10"
+          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-whatsapp transition hover:border-whatsapp hover:bg-whatsapp/10"
         >
           <WhatsAppIcon className="size-[18px]" />
         </a>

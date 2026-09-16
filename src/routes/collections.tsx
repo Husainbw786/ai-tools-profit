@@ -108,7 +108,7 @@ function CollectionsPage() {
                     href={reminderWhatsAppUrl(s)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-[7px] text-[12px] font-bold text-white transition hover:bg-primary/90"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-whatsapp px-3 py-[7px] text-[12px] font-bold text-white transition hover:bg-whatsapp/90"
                   >
                     <WhatsAppIcon className="size-[14px]" />
                     Send reminder
