@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { differenceInCalendarDays } from "date-fns";
-import { MessageCircle } from "lucide-react";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { BackLink, EmptyState, PageTitle } from "@/components/primitives";
@@ -110,7 +110,7 @@ function CollectionsPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-[7px] text-[12px] font-bold text-white transition hover:bg-primary/90"
                   >
-                    <MessageCircle className="size-[13px]" strokeWidth={2.2} />
+                    <WhatsAppIcon className="size-[14px]" />
                     Send reminder
                   </a>
                 </div>
