@@ -1,21 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { toast } from "sonner";
-import { ChevronRight, RefreshCw } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { PageTitle, SegmentedPill } from "@/components/primitives";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { useSales } from "@/hooks/use-sales";
 import { supabase } from "@/integrations/supabase/client";
 import { balanceDue, formatMoney, isExpired, isRefunded } from "@/lib/sale-utils";
-import { backfillSalesToSheet, isAdmin } from "@/lib/sales.functions";
-import { backfillMyBackup } from "@/lib/backup.functions";
-import { friendlyError } from "@/lib/request-error";
 
 export const Route = createFileRoute("/more")({
   head: () => ({
@@ -52,28 +45,6 @@ function MorePage() {
     [sales],
   );
   const expiredCount = useMemo(() => sales.filter((s) => isExpired(s)).length, [sales]);
-
-  const isAdminFn = useServerFn(isAdmin);
-  const backfillFn = useServerFn(backfillSalesToSheet);
-  const backupBackfillFn = useServerFn(backfillMyBackup);
-  const { data: adminData } = useQuery({
-    queryKey: ["is-admin"],
-    queryFn: () => isAdminFn(),
-    staleTime: 5 * 60_000,
-  });
-  const backfill = useMutation({
-    mutationFn: () => backfillFn(),
-    onSuccess: (r) => toast.success(`Synced ${r.total} sales across ${r.users} user(s)`),
-    onError: (e: Error) => toast.error(friendlyError(e)),
-  });
-  const backupBackfill = useMutation({
-    mutationFn: () => backupBackfillFn(),
-    onSuccess: (r) =>
-      toast.success(
-        `Backup synced: ${r.saleCount} sales, ${r.paymentCount} payments, ${r.contactCount} contacts`,
-      ),
-    onError: (e: Error) => toast.error(friendlyError(e)),
-  });
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -136,20 +107,6 @@ function MorePage() {
             </Link>
           </li>
         ))}
-        {adminData?.isAdmin && (
-          <ActionRow
-            label="Sync to Google Sheet"
-            sub="Export every sale"
-            pending={backfill.isPending}
-            onClick={() => backfill.mutate()}
-          />
-        )}
-        <ActionRow
-          label="Sync to backup DB"
-          sub="Copy to second project"
-          pending={backupBackfill.isPending}
-          onClick={() => backupBackfill.mutate()}
-        />
       </ul>
 
       <Button
@@ -165,38 +122,5 @@ function MorePage() {
         {user?.email && <div className="mt-0.5">{user.email}</div>}
       </div>
     </AppLayout>
-  );
-}
-
-function ActionRow({
-  label,
-  sub,
-  pending,
-  onClick,
-}: {
-  label: string;
-  sub: string;
-  pending: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <li>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={onClick}
-        className="flex w-full items-center justify-between gap-3 border-b border-hairline py-[18px] text-left disabled:opacity-60"
-      >
-        <div className="min-w-0">
-          <div className="text-[15px] font-bold">{label}</div>
-          <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{sub}</div>
-        </div>
-        {pending ? (
-          <RefreshCw className="size-4 shrink-0 animate-spin text-faint" />
-        ) : (
-          <ChevronRight className={cn("size-4 shrink-0 text-faint")} strokeWidth={2.2} />
-        )}
-      </button>
-    </li>
   );
 }
