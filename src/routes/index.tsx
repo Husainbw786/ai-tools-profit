@@ -65,6 +65,7 @@ function Index() {
   const totalProfit = inRange.reduce((sum, s) => sum + profit(s), 0);
   const totalRevenue = inRange.reduce((sum, s) => sum + effectiveRevenue(s), 0);
   const totalCost = inRange.reduce((sum, s) => sum + lineCost(s), 0);
+  const totalUnits = inRange.reduce((sum, s) => sum + (s.quantity || 1), 0);
 
   const unpaid = useMemo(() => sales.filter((s) => balanceDue(s) > 0 && !isRefunded(s)), [sales]);
   const dueAmount = unpaid.reduce((a, s) => a + balanceDue(s), 0);
@@ -144,7 +145,19 @@ function Index() {
       <StatGrid cols={3} className="mt-8">
         <Stat label="Revenue" value={formatMoney(totalRevenue)} />
         <Stat label="Cost" value={formatMoney(totalCost)} />
-        <Stat label="Sales" value={inRange.length} />
+        <Stat
+          label="Sales"
+          value={
+            totalUnits !== inRange.length ? (
+              <>
+                {inRange.length}{" "}
+                <span className="text-[12px] font-semibold text-faint">· {totalUnits} units</span>
+              </>
+            ) : (
+              inRange.length
+            )
+          }
+        />
       </StatGrid>
 
       {dueAmount > 0 && (

@@ -53,7 +53,7 @@ export const mirrorSale = createServerFn({ method: "POST" })
       const amountPaid = (payments ?? []).reduce((a, p) => a + Number(p.amount), 0);
       await Promise.allSettled([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tabFor(userId).then((tab) => sheets.upsertSaleRow(tab, row as any)),
+        tabFor(userId).then((tab) => sheets.upsertSaleRow(tab, row as any, amountPaid)),
         backup.upsertBackupSale(row, amountPaid).catch((e) => warn("upsertBackupSale", e)),
         ...(payments ?? []).map((p) =>
           backup.upsertBackupPayment(p).catch((e) => warn("upsertBackupPayment", e)),

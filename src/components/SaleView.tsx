@@ -9,6 +9,7 @@ import { useDeleteSale, useUpdateSale } from "@/hooks/use-sales";
 import { cn } from "@/lib/utils";
 import { friendlyError } from "@/lib/request-error";
 import {
+  amountCollected,
   balanceDue,
   daysRemaining,
   formatDate,
@@ -38,10 +39,12 @@ export function SaleView({
   const due = balanceDue(sale);
   const refunded = isRefunded(sale);
   const expired = isExpired(sale);
+  // A refund can only return money that was actually collected.
+  const collected = amountCollected(sale);
   const updateMut = useUpdateSale();
   const deleteMut = useDeleteSale();
   const [showRefund, setShowRefund] = useState(false);
-  const [refundAmt, setRefundAmt] = useState<number>(lineTotal(sale));
+  const [refundAmt, setRefundAmt] = useState<number>(collected);
   const [refundReason, setRefundReason] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -51,7 +54,7 @@ export function SaleView({
         id: sale.id,
         patch: {
           refundedAt: new Date().toISOString(),
-          refundAmount: Math.max(0, Math.min(refundAmt, lineTotal(sale))),
+          refundAmount: Math.max(0, Math.min(refundAmt, collected)),
           refundReason: refundReason.trim() || null,
         },
       });
@@ -118,7 +121,7 @@ export function SaleView({
       {(refunded || due > 0) && (
         <div className="mt-3.5 rounded-[12px] bg-destructive-soft px-3.5 py-2.5 text-center text-[13px] font-bold text-destructive">
           {refunded
-            ? `Refunded · ${formatMoney(sale.refundAmount ?? lineTotal(sale))} returned${
+            ? `Refunded · ${formatMoney(sale.refundAmount ?? collected)} returned${
                 sale.refundReason ? ` · ${sale.refundReason}` : ""
               }${sale.refundedAt ? ` · ${formatDate(sale.refundedAt)}` : ""}`
             : `${formatMoney(due)} due`}
@@ -161,11 +164,14 @@ export function SaleView({
               type="button"
               variant="outline"
               className="h-[46px] rounded-[12px] px-4 text-[13px]"
-              onClick={() => setRefundAmt(lineTotal(sale))}
+              onClick={() => setRefundAmt(collected)}
             >
               Full
             </Button>
           </div>
+          <p className="mt-1.5 text-[11px] text-faint">
+            {formatMoney(collected)} collected on this sale so far.
+          </p>
           <Input
             className="mt-2"
             placeholder="Reason (optional)"
@@ -173,7 +179,8 @@ export function SaleView({
             onChange={(e) => setRefundReason(e.target.value)}
           />
           <p className="mt-1.5 text-[11px] text-faint">
-            Profit will drop to {formatMoney(lineTotal(sale) - refundAmt - lineCost(sale))}.
+            Profit will drop to{" "}
+            {formatMoney(Math.max(0, collected - Math.min(refundAmt, collected)) - lineCost(sale))}.
           </p>
           <div className="mt-3 flex gap-2">
             <Button
@@ -214,7 +221,7 @@ export function SaleView({
           onClick={() => {
             if (refunded) undoRefund();
             else {
-              setRefundAmt(lineTotal(sale));
+              setRefundAmt(collected);
               setShowRefund((v) => !v);
             }
           }}

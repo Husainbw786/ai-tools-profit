@@ -50,6 +50,7 @@ export function useCreateSale() {
         });
         mirror(row.id, "upsert");
       }
+      qc.invalidateQueries({ queryKey: SALES_KEY });
     },
   });
 }

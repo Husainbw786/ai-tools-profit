@@ -89,10 +89,19 @@ export const createSale = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => SaleInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const initialPayment = Math.min(
-      Math.max(0, data.initialPaymentAmount ?? 0),
-      data.sellPrice * data.quantity,
-    );
+    const lineTotal = data.sellPrice * data.quantity;
+    const initialPayment = Math.min(Math.max(0, data.initialPaymentAmount ?? 0), lineTotal);
+    // The status is derived from what was actually received against the line
+    // total (per-unit price × quantity), so it can never disagree with the
+    // payment ledger. "Paid" with nothing received is kept as a manual mark.
+    const paymentStatus: SaleDTO["paymentStatus"] =
+      initialPayment > 0
+        ? initialPayment >= lineTotal
+          ? "paid"
+          : "partial"
+        : data.paymentStatus === "paid"
+          ? "paid"
+          : "unpaid";
     const { data: row, error } = await supabase
       .from("sales")
       .insert({
@@ -109,7 +118,7 @@ export const createSale = createServerFn({ method: "POST" })
         customer_number: data.customerNumber ?? null,
         dealer_number: data.dealerNumber ?? null,
         has_warranty: data.hasWarranty,
-        payment_status: data.paymentStatus,
+        payment_status: paymentStatus,
       } as any)
       .select("*")
       .single();
@@ -193,11 +202,16 @@ export const backfillSalesToSheet = createServerFn({ method: "POST" })
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { replaceUserSheet, resolveTabName } = await import("@/lib/sheets.server");
-    const { data: rows, error } = await supabaseAdmin
-      .from("sales")
-      .select("*")
-      .order("created_at", { ascending: true });
+    const [{ data: rows, error }, { data: pays, error: payErr }] = await Promise.all([
+      supabaseAdmin.from("sales").select("*").order("created_at", { ascending: true }),
+      supabaseAdmin.from("sale_payments").select("sale_id, amount"),
+    ]);
     if (error) throw new Error(error.message);
+    if (payErr) throw new Error(payErr.message);
+    const paidBySale = new Map<string, number>();
+    for (const p of pays ?? []) {
+      paidBySale.set(p.sale_id, (paidBySale.get(p.sale_id) ?? 0) + Number(p.amount));
+    }
     const byUser = new Map<string, any[]>();
     for (const r of rows ?? []) {
       const arr = byUser.get(r.user_id) ?? [];
@@ -208,7 +222,7 @@ export const backfillSalesToSheet = createServerFn({ method: "POST" })
     let total = 0;
     for (const [userId, list] of byUser) {
       const tab = await resolveTabName(userId);
-      await replaceUserSheet(tab, list);
+      await replaceUserSheet(tab, list, paidBySale);
       users++;
       total += list.length;
     }

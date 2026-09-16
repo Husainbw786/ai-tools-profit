@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +14,13 @@ import { Bone } from "@/components/skeletons";
 import { friendlyError } from "@/lib/request-error";
 import { cn } from "@/lib/utils";
 import { useCreateSale, useSales, useUpdateSale } from "@/hooks/use-sales";
-import { formatMoney, type PaymentStatus, type Sale } from "@/lib/sale-utils";
+import {
+  formatMoney,
+  statusLabel,
+  statusTagClass,
+  type PaymentStatus,
+  type Sale,
+} from "@/lib/sale-utils";
 
 type Item = {
   productName: string;
@@ -56,6 +62,13 @@ const numeric = (v: string) => {
 const PAY_OPTIONS: { id: PaymentStatus; label: string }[] = [
   { id: "paid", label: "Paid" },
   { id: "partial", label: "Partial" },
+  { id: "unpaid", label: "Unpaid" },
+];
+
+// Editing a sale with no recorded payments: "partial" would claim money was
+// received without any payment row to back it, so only the two manual marks.
+const MANUAL_PAY_OPTIONS: { id: PaymentStatus; label: string }[] = [
+  { id: "paid", label: "Paid" },
   { id: "unpaid", label: "Unpaid" },
 ];
 
@@ -101,8 +114,11 @@ export function SaleForm({
       : [emptyItem()],
   );
   const [amountReceived, setAmountReceived] = useState<number>(0);
-  const [receivedTouched, setReceivedTouched] = useState(false);
+  const receivedTouched = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  // Once payments exist, the status is derived from them (see the DB trigger);
+  // the form must not overwrite it.
+  const hasPayments = (sale?.amountPaid ?? 0) > 0;
 
   const createMut = useCreateSale();
   const updateMut = useUpdateSale();
@@ -185,14 +201,14 @@ export function SaleForm({
     0,
   );
 
-  // Auto-sync received amount with status / total until the user edits it.
+  // Auto-sync received amount with status / total. A "partial" amount the user
+  // typed is left alone.
   useEffect(() => {
     if (sale) return;
-    if (receivedTouched && shared.paymentStatus === "partial") return;
     if (shared.paymentStatus === "paid") setAmountReceived(totalRevenue);
     else if (shared.paymentStatus === "unpaid") setAmountReceived(0);
-    else if (shared.paymentStatus === "partial" && !receivedTouched) setAmountReceived(0);
-  }, [shared.paymentStatus, totalRevenue, sale, receivedTouched]);
+    else if (!receivedTouched.current) setAmountReceived(0);
+  }, [shared.paymentStatus, totalRevenue, sale]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,47 +217,69 @@ export function SaleForm({
       return;
     }
     setError(null);
-    try {
-      if (sale) {
-        const it = items[0];
+    if (sale) {
+      const it = items[0];
+      const { paymentStatus, ...sharedRest } = shared;
+      try {
         await updateMut.mutateAsync({
           id: sale.id,
           patch: {
-            ...shared,
+            ...sharedRest,
             productName: it.productName.trim(),
             durationMonths: it.durationMonths,
             quantity: it.quantity,
             buyPrice: it.buyPrice,
             sellPrice: it.sellPrice,
             hasWarranty: it.hasWarranty,
+            ...(hasPayments ? {} : { paymentStatus }),
           },
         });
         toast.success("Sale updated");
-      } else {
-        // Waterfall the amount received across the products, then save them in
-        // parallel so a multi-product sale costs one round trip, not N.
-        let remainingReceived = Math.min(amountReceived, totalRevenue);
-        const inputs = items.map((it) => {
-          const lineTotal = it.sellPrice * (it.quantity || 1);
-          const initialPaymentAmount = Math.max(0, Math.min(remainingReceived, lineTotal));
-          remainingReceived -= initialPaymentAmount;
-          return {
-            ...shared,
-            productName: it.productName.trim(),
-            durationMonths: it.durationMonths,
-            quantity: it.quantity,
-            buyPrice: it.buyPrice,
-            sellPrice: it.sellPrice,
-            hasWarranty: it.hasWarranty,
-            initialPaymentAmount,
-          };
-        });
-        await Promise.all(inputs.map((input) => createMut.mutateAsync(input)));
-        toast.success(items.length > 1 ? `${items.length} sales added` : "Sale added");
+        onSaved();
+      } catch (err) {
+        toast.error(friendlyError(err, "Save failed. Please try again."));
       }
+      return;
+    }
+
+    // Waterfall the amount received across the products, then save them in
+    // parallel so a multi-product sale costs one round trip, not N.
+    let remainingReceived = Math.min(amountReceived, totalRevenue);
+    const inputs = items.map((it) => {
+      const lineTotal = it.sellPrice * (it.quantity || 1);
+      const initialPaymentAmount = Math.max(0, Math.min(remainingReceived, lineTotal));
+      remainingReceived -= initialPaymentAmount;
+      return {
+        ...shared,
+        productName: it.productName.trim(),
+        durationMonths: it.durationMonths,
+        quantity: it.quantity,
+        buyPrice: it.buyPrice,
+        sellPrice: it.sellPrice,
+        hasWarranty: it.hasWarranty,
+        initialPaymentAmount,
+      };
+    });
+    const results = await Promise.allSettled(inputs.map((input) => createMut.mutateAsync(input)));
+    const failed = results.map((r, i) => (r.status === "rejected" ? i : -1)).filter((i) => i >= 0);
+    if (failed.length === 0) {
+      toast.success(items.length > 1 ? `${items.length} sales added` : "Sale added");
       onSaved();
-    } catch (err) {
-      toast.error(friendlyError(err, "Save failed. Please try again."));
+      return;
+    }
+    const firstError = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+    toast.error(friendlyError(firstError.reason, "Save failed. Please try again."));
+    if (failed.length < items.length) {
+      // Keep only the products that did not save so a retry cannot duplicate
+      // the ones that did. Their share of the received amount comes with them.
+      setItems(failed.map((i) => items[i]));
+      receivedTouched.current = true;
+      setAmountReceived(failed.reduce((a, i) => a + inputs[i].initialPaymentAmount, 0));
+      setError(
+        `Saved ${items.length - failed.length} of ${items.length}. The ${
+          failed.length === 1 ? "product" : `${failed.length} products`
+        } still shown ${failed.length === 1 ? "was" : "were"} not saved — tap the button to retry.`,
+      );
     }
   };
 
@@ -298,14 +336,26 @@ export function SaleForm({
                 }}
               />
             </Field>
-            <Field label="Buy price">
+            <Field
+              label={
+                <>
+                  Buy price <span className="font-medium text-faint">(each)</span>
+                </>
+              }
+            >
               <NumericInput
                 value={it.buyPrice}
                 placeholder="0"
                 onChange={(n) => updateItem(idx, { buyPrice: n })}
               />
             </Field>
-            <Field label="Sell price">
+            <Field
+              label={
+                <>
+                  Sell price <span className="font-medium text-faint">(each)</span>
+                </>
+              }
+            >
               <NumericInput
                 value={it.sellPrice}
                 placeholder="0"
@@ -427,17 +477,42 @@ export function SaleForm({
       </div>
 
       <Label className="mt-[18px]">Payment status</Label>
-      <SegmentedPill
-        grow
-        className="mt-2 text-[13px]"
-        options={PAY_OPTIONS}
-        value={shared.paymentStatus}
-        onChange={(s) => setShared({ ...shared, paymentStatus: s })}
-      />
-      {sale && (
-        <p className="mt-1.5 text-[11px] text-faint">
-          Auto-updated when you record payments on the sale.
-        </p>
+      {sale && hasPayments ? (
+        <>
+          <div className="mt-2 flex items-center gap-2.5">
+            <span
+              className={cn(
+                "rounded-full px-[9px] py-[3px] text-[11px] font-bold uppercase tracking-[0.04em]",
+                statusTagClass(sale),
+              )}
+            >
+              {statusLabel(sale)}
+            </span>
+            <span className="tabular text-[12px] text-muted-foreground">
+              {formatMoney(sale.amountPaid)} received
+            </span>
+          </div>
+          <p className="mt-1.5 text-[11px] text-faint">
+            Worked out from the recorded payments and the total; record or remove payments on the
+            sale to change it.
+          </p>
+        </>
+      ) : (
+        <>
+          <SegmentedPill
+            grow
+            className="mt-2 text-[13px]"
+            options={sale ? MANUAL_PAY_OPTIONS : PAY_OPTIONS}
+            value={shared.paymentStatus}
+            onChange={(s) => setShared({ ...shared, paymentStatus: s })}
+          />
+          {sale && (
+            <p className="mt-1.5 text-[11px] text-faint">
+              No payments recorded on this sale. Once you record one, the status follows the
+              payments.
+            </p>
+          )}
+        </>
       )}
 
       {isNew && shared.paymentStatus !== "unpaid" && (
@@ -449,7 +524,7 @@ export function SaleForm({
               placeholder="0"
               className="flex-1"
               onChange={(n) => {
-                setReceivedTouched(true);
+                receivedTouched.current = true;
                 setAmountReceived(n);
               }}
             />
@@ -459,7 +534,7 @@ export function SaleForm({
                 variant="outline"
                 className="h-[46px] rounded-[12px] px-4 text-[13px]"
                 onClick={() => {
-                  setReceivedTouched(true);
+                  receivedTouched.current = true;
                   setShared((current) => ({ ...current, paymentStatus: "paid" }));
                   setAmountReceived(totalRevenue);
                 }}
