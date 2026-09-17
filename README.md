@@ -94,9 +94,9 @@ the workflow from the Actions tab or push to `main`.
 - Apply the schema: paste `supabase/scripts/schema.sql` (all migrations combined) into the
   SQL editor and run it once. Or use the Supabase CLI: `supabase db push`.
 - Authentication > URL Configuration: set **Site URL** to your Vercel URL and add it
-  to **Redirect URLs** so email confirmation links land on the deployed app.
-- Google sign-in uses Supabase's own Google provider (Authentication > Providers).
-  Email/password works out of the box.
+  to **Redirect URLs** so the OAuth callback lands on the deployed app.
+- Google is the only sign-in method. Enable Supabase's own Google provider under
+  Authentication > Providers; sign-up and sign-in both go through it.
 - Restoring from the `*_backup` tables written by the old deployment's backup sync:
   create the user accounts, fill in the old-to-new id mapping at the top of
   `supabase/scripts/import_from_backup.sql`, and run it once in the SQL editor.

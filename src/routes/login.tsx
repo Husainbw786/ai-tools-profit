@@ -1,11 +1,9 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight, Eye, EyeOff, Lock, Mail, Shield, User, X } from "lucide-react";
+import { Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoginShowcase } from "@/components/LoginShowcase";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -24,14 +22,13 @@ export const Route = createFileRoute("/login")({
  * Split login screen. From `md` up the pitch and the form sit side by side;
  * below it the pitch is the page and the form slides up as a bottom sheet.
  * The breakpoint is pure CSS so the server and the first client render agree.
+ *
+ * Google is the only way in. Sign-in and sign-up share the same OAuth flow;
+ * Supabase creates the account on first sign-in, so the two modes differ only
+ * in copy.
  */
 function LoginPage() {
-  const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   // Only consulted below `md`; on wider screens the form is always on screen.
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -52,33 +49,6 @@ function LoginPage() {
     setSheetOpen(true);
   };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      if (isSignup) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: name.trim() ? { full_name: name.trim() } : undefined,
-          },
-        });
-        if (error) throw error;
-        toast.success("Check your email to confirm your account.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: "/" });
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Authentication failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const google = async () => {
     setBusy(true);
     // Uses Supabase's own Google provider. Enable it under
@@ -92,20 +62,6 @@ function LoginPage() {
       setBusy(false);
       toast.error(error.message || "Google sign-in failed");
     }
-  };
-
-  const forgot = async () => {
-    if (!email.trim()) {
-      toast.error("Enter your email first, then tap Forgot.");
-      return;
-    }
-    setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/login`,
-    });
-    setBusy(false);
-    if (error) toast.error(error.message || "Could not send the reset link");
-    else toast.success("Password reset link sent. Check your email.");
   };
 
   return (
@@ -152,91 +108,8 @@ function LoginPage() {
             onClick={google}
           >
             <GoogleMark />
-            Continue with Google
+            {isSignup ? "Sign up with Google" : "Continue with Google"}
           </Button>
-
-          <div className="my-[22px] flex items-center gap-3 text-[12px] font-semibold text-faint">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
-          <form onSubmit={submit}>
-            {isSignup && (
-              <div className="mb-4">
-                <Label htmlFor="name">Name</Label>
-                <Field icon={User}>
-                  <Input
-                    id="name"
-                    type="text"
-                    autoComplete="name"
-                    placeholder="Your name"
-                    className="h-12 bg-card pl-[42px]"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </Field>
-              </div>
-            )}
-
-            <Label htmlFor="email">Email</Label>
-            <Field icon={Mail}>
-              <Input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="you@example.com"
-                className="h-12 bg-card pl-[42px]"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </Field>
-
-            <div className="mt-4 flex items-baseline justify-between">
-              <Label htmlFor="password">Password</Label>
-              {!isSignup && (
-                <button
-                  type="button"
-                  onClick={forgot}
-                  disabled={busy}
-                  className="text-[12px] font-semibold text-accent-text transition hover:underline disabled:opacity-50"
-                >
-                  Forgot?
-                </button>
-              )}
-            </div>
-            <Field icon={Lock}>
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                required
-                minLength={6}
-                autoComplete={isSignup ? "new-password" : "current-password"}
-                placeholder="••••••••"
-                className="h-12 bg-card pl-[42px] pr-11"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-3 top-3 grid size-6 place-items-center text-faint transition hover:text-muted-foreground"
-              >
-                {showPassword ? (
-                  <EyeOff className="size-[18px]" strokeWidth={2} />
-                ) : (
-                  <Eye className="size-[18px]" strokeWidth={2} />
-                )}
-              </button>
-            </Field>
-
-            <Button type="submit" className="mt-[22px] h-[50px] w-full gap-2" disabled={busy}>
-              {isSignup ? "Create account" : "Sign in"}
-              <ArrowRight className="size-4" strokeWidth={2.5} />
-            </Button>
-          </form>
 
           <p className="mt-5 text-center text-[13px] text-muted-foreground">
             {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
@@ -262,22 +135,6 @@ function LoginPage() {
           className="fixed inset-0 z-[19] bg-[rgba(41,38,27,0.35)] md:hidden"
         />
       )}
-    </div>
-  );
-}
-
-/** Input wrapper that parks a 18px icon in the left gutter. */
-function Field({
-  icon: Icon,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative mt-1.5">
-      <Icon className="pointer-events-none absolute left-3.5 top-[15px] size-[18px] text-faint" />
-      {children}
     </div>
   );
 }
