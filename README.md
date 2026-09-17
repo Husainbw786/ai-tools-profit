@@ -25,6 +25,17 @@ chips, segmented pills, stat rules, underline search) live in `src/components/pr
 The dashboard is the one screen that uses filled surfaces: the net-profit card (`--surface-hero`,
 `--surface-hero-chip`) and the 2×2 tile grid under it. WhatsApp actions use the brand green (`--whatsapp`).
 
+### Messaging a customer or dealer
+
+Opening a sale and tapping **Message** shows a prefilled WhatsApp text with a
+Customer / Dealer switch. The customer text is a personalised purchase confirmation
+(product, plan, rate, paid or due, covered till when); the dealer text asks the dealer
+to confirm supplying the item at the buy rate. Both can be edited before **Send on
+WhatsApp** (opens `wa.me` with the saved number, or lets you pick the chat if none is
+saved) or **Copy**. Right after a new sale is recorded, the toast offers **Confirm with
+dealer**, which sends one message covering every product in that order. Templates live in
+`src/lib/sale-utils.ts` (`buildCustomerConfirmationMessage`, `buildDealerOrderMessage`).
+
 ### Put the server next to the database
 
 Server functions run as Vercel serverless functions in Vercel's default region (US East)

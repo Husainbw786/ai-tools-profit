@@ -99,37 +99,108 @@ export const filterByRange = (sales: Sale[], range: DateRange | null) => {
   });
 };
 
-export function buildWhatsAppMessage(s: Sale): string {
-  const end = warrantyEnd(s);
-  const fmtDate = (d: Date) =>
-    d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-  const statusLine =
-    s.paymentStatus === "paid"
-      ? "✅ Paid"
-      : s.paymentStatus === "partial"
-        ? "🟠 Partial payment"
-        : "🔴 Payment pending";
-  const qty = s.quantity && s.quantity > 1 ? s.quantity : null;
+/** Who a sale message goes to. */
+export type MessageRecipient = "customer" | "dealer";
+
+export const recipientName = (s: Sale, to: MessageRecipient) =>
+  (to === "customer" ? s.customerName : s.buyerName).trim();
+
+export const recipientPhone = (s: Sale, to: MessageRecipient) =>
+  (to === "customer" ? s.customerNumber : s.dealerNumber) ?? null;
+
+/**
+ * wa.me link for an arbitrary text. Without a number WhatsApp opens with the
+ * text prefilled and asks which chat to send it to.
+ */
+export function whatsAppShareUrl(phone: string | null | undefined, text: string): string {
+  const digits = (phone ?? "").replace(/[^0-9]/g, "");
+  const q = `?text=${encodeURIComponent(text)}`;
+  return digits ? `https://wa.me/${digits}${q}` : `https://wa.me/${q}`;
+}
+
+const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? "";
+
+const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+
+/**
+ * Personalised purchase confirmation for the customer: what they bought, at
+ * what rate, what they paid and how long it is covered.
+ */
+export function buildCustomerConfirmationMessage(s: Sale): string {
+  const q = qty(s);
+  const name = firstName(s.customerName);
+  const total = lineTotal(s);
+  const collected = amountCollected(s);
+  const due = balanceDue(s);
+  const paymentLine = isRefunded(s)
+    ? `Payment: ↩️ Refunded ${formatMoney(s.refundAmount ?? collected)}`
+    : due <= 0
+      ? "Payment: ✅ Paid in full"
+      : collected > 0
+        ? `Payment: 🟠 ${formatMoney(collected)} received · *${formatMoney(due)} balance due*`
+        : `Payment: 🔴 *${formatMoney(due)} due*`;
   const lines = [
-    `*${s.productName}*${qty ? ` × ${qty}` : ""}`,
-    s.customerName ? `Customer: ${s.customerName}` : null,
-    `Duration: ${s.durationMonths} month${s.durationMonths === 1 ? "" : "s"}`,
-    qty ? `Quantity: ${qty}` : null,
-    s.hasWarranty
-      ? `Warranty: ${fmtDate(new Date(s.warrantyStart))} → ${fmtDate(end)}`
-      : `Start: ${fmtDate(new Date(s.warrantyStart))}`,
-    `Amount: ${formatMoney(lineTotal(s))}`,
-    statusLine,
+    `Hi${name ? ` ${name}` : ""}! 👋`,
     "",
-    "_Sent via ProfitAI_",
-  ].filter(Boolean);
+    "Thank you for your purchase. Here are your subscription details:",
+    "",
+    `*${s.productName}*${q > 1 ? ` × ${q}` : ""}`,
+    `Plan: ${plural(s.durationMonths, "month")}`,
+    q > 1 ? `Rate: ${formatMoney(s.sellPrice)} each` : `Price: ${formatMoney(s.sellPrice)}`,
+    q > 1 ? `Total: ${formatMoney(total)}` : null,
+    paymentLine,
+    `Active from: ${formatDate(s.warrantyStart)}`,
+    s.hasWarranty
+      ? `Warranty till: ${formatDate(warrantyEnd(s))}`
+      : `Valid till: ${formatDate(warrantyEnd(s))}`,
+    "",
+    s.hasWarranty
+      ? "If anything stops working during the warranty period, just message me here and I'll sort it out right away."
+      : "If you need any help with the subscription, just message me here.",
+    "",
+    "Thanks for choosing us! 🙏",
+  ].filter((l): l is string => l !== null);
   return lines.join("\n");
 }
 
-export function whatsAppUrl(s: Sale): string {
-  const phone = (s.customerNumber ?? "").replace(/[^0-9]/g, "");
-  const text = encodeURIComponent(buildWhatsAppMessage(s));
-  return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+/**
+ * Purchase confirmation to the dealer: the items to supply, at the agreed
+ * buy rate, and a request to confirm. Several sales from one order share a
+ * single message.
+ */
+export function buildDealerOrderMessage(sales: Sale | Sale[]): string {
+  const items = Array.isArray(sales) ? sales : [sales];
+  if (items.length === 0) return "";
+  const name = items[0].buyerName.trim();
+  const orderTotal = items.reduce((a, s) => a + lineCost(s), 0);
+  const blocks = items.map((s) => {
+    const q = qty(s);
+    return [
+      `*${s.productName}*${q > 1 ? ` × ${q}` : ""}`,
+      `Plan: ${plural(s.durationMonths, "month")}`,
+      q > 1 ? `Rate: ${formatMoney(s.buyPrice)} each` : `Price: ${formatMoney(s.buyPrice)}`,
+      q > 1 ? `Total: ${formatMoney(lineCost(s))}` : null,
+      `Start: ${formatDate(s.warrantyStart)}`,
+      `Warranty: ${s.hasWarranty ? `${plural(s.durationMonths, "month")} (required)` : "not required"}`,
+    ]
+      .filter((l): l is string => l !== null)
+      .join("\n");
+  });
+  const lines = [
+    `Hi${name ? ` ${name}` : ""},`,
+    "",
+    items.length > 1 ? "Please confirm this order:" : "Please confirm this purchase:",
+    "",
+    blocks.join("\n\n"),
+    items.length > 1 ? `\n*Order total: ${formatMoney(orderTotal)}*` : null,
+    "",
+    "Reply to confirm availability and share the activation details. Thank you!",
+  ].filter((l): l is string => l !== null);
+  return lines.join("\n");
+}
+
+export function buildSaleMessage(s: Sale, to: MessageRecipient): string {
+  return to === "customer" ? buildCustomerConfirmationMessage(s) : buildDealerOrderMessage(s);
 }
 
 export function buildReminderMessage(s: Sale): string {
@@ -153,10 +224,9 @@ export function buildReminderMessage(s: Sale): string {
 }
 
 export function reminderWhatsAppUrl(s: Sale): string {
-  const phone = (s.customerNumber ?? "").replace(/[^0-9]/g, "");
-  const text = encodeURIComponent(buildReminderMessage(s));
-  return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+  return whatsAppShareUrl(s.customerNumber, buildReminderMessage(s));
 }
+
 // Compact rupee label for chart bars: ₹1.7k, ₹12k, ₹850.
 export function formatCompactMoney(n: number): string {
   const abs = Math.abs(n);

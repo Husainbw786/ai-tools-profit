@@ -15,9 +15,11 @@ import { friendlyError } from "@/lib/request-error";
 import { cn } from "@/lib/utils";
 import { useCreateSale, useSales, useUpdateSale } from "@/hooks/use-sales";
 import {
+  buildDealerOrderMessage,
   formatMoney,
   statusLabel,
   statusTagClass,
+  whatsAppShareUrl,
   type PaymentStatus,
   type Sale,
 } from "@/lib/sale-utils";
@@ -263,7 +265,27 @@ export function SaleForm({
     const results = await Promise.allSettled(inputs.map((input) => createMut.mutateAsync(input)));
     const failed = results.map((r, i) => (r.status === "rejected" ? i : -1)).filter((i) => i >= 0);
     if (failed.length === 0) {
-      toast.success(items.length > 1 ? `${items.length} sales added` : "Sale added");
+      // One tap to ask the dealer to confirm the whole order just recorded.
+      const created = results.flatMap((r) =>
+        r.status === "fulfilled" && r.value ? [r.value] : [],
+      );
+      const hasDealer = shared.buyerName.trim() !== "" || shared.dealerNumber.trim() !== "";
+      const dealerUrl =
+        created.length > 0 && hasDealer
+          ? whatsAppShareUrl(shared.dealerNumber, buildDealerOrderMessage(created))
+          : null;
+      toast.success(
+        items.length > 1 ? `${items.length} sales added` : "Sale added",
+        dealerUrl
+          ? {
+              duration: 6000,
+              action: {
+                label: "Confirm with dealer",
+                onClick: () => window.open(dealerUrl, "_blank", "noopener,noreferrer"),
+              },
+            }
+          : undefined,
+      );
       onSaved();
       return;
     }

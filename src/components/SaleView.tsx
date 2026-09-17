@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PaymentsSection } from "@/components/PaymentsSection";
+import { MessageComposer } from "@/components/MessageComposer";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
 import { Stat, StatGrid, StatusDot } from "@/components/primitives";
 import { useDeleteSale, useUpdateSale } from "@/hooks/use-sales";
 import { cn } from "@/lib/utils";
@@ -23,7 +25,6 @@ import {
   statusLabel,
   statusTagClass,
   warrantyEnd,
-  whatsAppUrl,
   type Sale,
 } from "@/lib/sale-utils";
 
@@ -44,6 +45,7 @@ export function SaleView({
   const updateMut = useUpdateSale();
   const deleteMut = useDeleteSale();
   const [showRefund, setShowRefund] = useState(false);
+  const [showMessage, setShowMessage] = useState(false);
   const [refundAmt, setRefundAmt] = useState<number>(collected);
   const [refundReason, setRefundReason] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -144,6 +146,8 @@ export function SaleView({
 
       <PaymentsSection sale={sale} />
 
+      {showMessage && <MessageComposer key={sale.id} sale={sale} />}
+
       {showRefund && !refunded && (
         <div className="mt-5 border-t border-border pt-3.5">
           <Label>Refund this sale</Label>
@@ -205,10 +209,21 @@ export function SaleView({
       )}
 
       <div className="mt-[26px] flex gap-2">
-        <Button asChild variant="outline" className="h-12 flex-1 rounded-[14px] text-[14px]">
-          <a href={whatsAppUrl(sale)} target="_blank" rel="noopener noreferrer">
-            WhatsApp
-          </a>
+        <Button
+          type="button"
+          variant="outline"
+          aria-pressed={showMessage}
+          className={cn(
+            "h-12 flex-1 rounded-[14px] text-[14px]",
+            showMessage && "border-whatsapp bg-whatsapp/10",
+          )}
+          onClick={() => {
+            setShowRefund(false);
+            setShowMessage((v) => !v);
+          }}
+        >
+          <WhatsAppIcon className="text-whatsapp" />
+          Message
         </Button>
         <Button
           type="button"
@@ -222,6 +237,7 @@ export function SaleView({
             if (refunded) undoRefund();
             else {
               setRefundAmt(collected);
+              setShowMessage(false);
               setShowRefund((v) => !v);
             }
           }}
