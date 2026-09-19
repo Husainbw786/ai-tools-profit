@@ -28,7 +28,9 @@ export function SalesGroups({
   onRowClick?: (s: Sale) => void;
   emptyText?: string;
 }) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Cards start collapsed: a busy customer's rows would otherwise bury the
+  // groups below them. Expanding is per card and resets when the view changes.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const groups = useMemo(() => {
     const map = new Map<string, Group>();
@@ -50,7 +52,7 @@ export function SalesGroups({
   return (
     <div>
       {groups.map((g) => {
-        const open = !collapsed[g.key];
+        const open = !!expanded[g.key];
         return (
           <div
             key={g.key}
@@ -59,7 +61,7 @@ export function SalesGroups({
             <button
               type="button"
               aria-expanded={open}
-              onClick={() => setCollapsed((c) => ({ ...c, [g.key]: !!open }))}
+              onClick={() => setExpanded((e) => ({ ...e, [g.key]: !open }))}
               className="flex w-full items-center gap-3 p-4 text-left"
             >
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-[13px] font-extrabold text-muted-foreground">
