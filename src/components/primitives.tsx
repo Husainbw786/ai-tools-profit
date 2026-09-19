@@ -200,8 +200,10 @@ export function SegmentedPill<T extends string>({
             aria-pressed={active}
             onClick={() => onChange(o.id)}
             className={cn(
-              "rounded-full px-3 py-1.5 transition-colors",
-              grow && "flex-1 text-center",
+              "rounded-full transition-colors",
+              // Full-width segments give their label the whole slot, so side
+              // padding only forces long labels ("By customer") to wrap.
+              grow ? "flex-1 px-1 py-2 text-center" : "px-3 py-1.5",
               active
                 ? "bg-card text-foreground shadow-[var(--shadow-chip)]"
                 : "text-muted-foreground",

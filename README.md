@@ -25,6 +25,18 @@ chips, segmented pills, stat rules, underline search) live in `src/components/pr
 The dashboard is the one screen that uses filled surfaces: the net-profit card (`--surface-hero`,
 `--surface-hero-chip`) and the 2×2 tile grid under it. WhatsApp actions use the brand green (`--whatsapp`).
 
+### Expiring soon, and grouping active sales
+
+The dashboard closes with **Expiring soon** (`src/components/ExpiringSoon.tsx`): warranties running
+out, soonest first, inside a 7-day / 30-day / all-active window and bucketed into This week, Next
+30 days and Later. Each row shows the days left as a countdown numeral (red inside three days,
+amber inside a week) and a WhatsApp button that opens a renewal nudge (`buildRenewalMessage` in
+`src/lib/sale-utils.ts`).
+
+**Active sales** can be read as a flat list or folded by customer or by dealer
+(`src/components/SalesGroups.tsx`). Grouped cards show the subscription count, the billed total and
+anything still due; rows inside name the *other* party, since the card header already names one.
+
 ### Messaging a customer or dealer
 
 Opening a sale and tapping **Message** shows a prefilled WhatsApp text with a

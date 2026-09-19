@@ -4,7 +4,7 @@ import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import { ArrowRight, Clock, FileText, MessageCircle, Settings, Target } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
-import { SalesList } from "@/components/SalesList";
+import { ExpiringSoon } from "@/components/ExpiringSoon";
 import { ProfitTrendChart } from "@/components/ProfitTrendChart";
 import { PeriodPopover } from "@/components/PeriodPopover";
 import {
@@ -103,10 +103,6 @@ function Index() {
 
   const active = useMemo(() => sales.filter((s) => !isExpired(s)), [sales]);
   const expiringSoon = active.filter((s) => s.hasWarranty && daysRemaining(s) <= 7).length;
-  const recent = useMemo(
-    () => [...active].sort((a, b) => b.warrantyStart.localeCompare(a.warrantyStart)).slice(0, 4),
-    [active],
-  );
 
   const initial = (user?.email?.[0] ?? "P").toUpperCase();
   const firstName = firstNameOf(user);
@@ -220,22 +216,7 @@ function Index() {
 
       <ProfitTrendChart sales={sales} className="pt-[26px]" />
 
-      <div className="mt-[30px] flex items-baseline justify-between">
-        <h2 className="text-section">Active</h2>
-        <Link
-          to="/sales"
-          className="inline-flex items-center gap-1 text-[13px] font-semibold text-muted-foreground transition hover:text-foreground"
-        >
-          {active.length} <ArrowRight className="size-3.5" />
-        </Link>
-      </div>
-      <div className="mt-1">
-        <SalesList
-          sales={recent}
-          emptyText="No active sales. Tap + to add your first one."
-          onRowClick={(s) => setEditing(s)}
-        />
-      </div>
+      <ExpiringSoon className="mt-7" sales={sales} onRowClick={(s) => setEditing(s)} />
 
       <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />
     </AppLayout>

@@ -227,6 +227,25 @@ export function reminderWhatsAppUrl(s: Sale): string {
   return whatsAppShareUrl(s.customerNumber, buildReminderMessage(s));
 }
 
+/** Renewal nudge for a subscription whose warranty is about to run out. */
+export function buildRenewalMessage(s: Sale): string {
+  const left = daysRemaining(s);
+  const when = left <= 0 ? "expires today" : `expires in ${plural(left, "day")}`;
+  const name = firstName(s.customerName);
+  return [
+    `Hi${name ? ` ${name}` : ""},`,
+    "",
+    `Your *${s.productName}* subscription ${when} (${formatDate(warrantyEnd(s))}).`,
+    `Would you like to renew for another ${plural(s.durationMonths, "month")} at ${formatMoney(lineTotal(s))}?`,
+    "",
+    "Reply here and I will set it up. Thank you!",
+  ].join("\n");
+}
+
+export function renewalWhatsAppUrl(s: Sale): string {
+  return whatsAppShareUrl(s.customerNumber, buildRenewalMessage(s));
+}
+
 // Compact rupee label for chart bars: ₹1.7k, ₹12k, ₹850.
 export function formatCompactMoney(n: number): string {
   const abs = Math.abs(n);
