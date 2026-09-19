@@ -2,6 +2,18 @@ import { balanceDue, effectiveRevenue, lineCost, profit, type Sale } from "@/lib
 
 export type ContactKind = "customer" | "dealer";
 
+/** Avatar monogram: first letters of the first two words, else two letters. */
+export function initials(name: string) {
+  const parts = name
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 export type ContactSummary = {
   kind: ContactKind;
   name: string; // display

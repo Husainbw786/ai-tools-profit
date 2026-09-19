@@ -283,6 +283,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 24px countdown numeral on the dashboard's expiring-soon rows. */
+@utility text-countdown {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 @utility text-title {
   font-family: var(--font-display);
   font-weight: 500;

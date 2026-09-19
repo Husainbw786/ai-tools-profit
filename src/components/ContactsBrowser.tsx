@@ -7,6 +7,7 @@ import { useSales } from "@/hooks/use-sales";
 import { useContacts } from "@/hooks/use-contacts";
 import {
   buildContactSummaries,
+  initials,
   waLink,
   type ContactKind,
   type ContactSummary,
@@ -23,17 +24,6 @@ const sortLabel: Record<SortKey, string> = {
   recent: "Recent",
   name: "Name",
 };
-
-export function initials(name: string) {
-  const parts = name
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (parts.length === 0) return "—";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
 
 export function ContactsBrowser({ kind }: { kind: ContactKind }) {
   const { data: sales = [], isPending } = useSales();

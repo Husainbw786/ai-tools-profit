@@ -4,7 +4,8 @@ import { Plus } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
-import { PageTitle, Pill, TextTabs, UnderlineSearch } from "@/components/primitives";
+import { SalesGroups, type GroupBy } from "@/components/SalesGroups";
+import { PageTitle, Pill, SegmentedPill, TextTabs, UnderlineSearch } from "@/components/primitives";
 import { SkeletonRows } from "@/components/skeletons";
 import { useSales } from "@/hooks/use-sales";
 import { openNewSale } from "@/lib/new-sale-bus";
@@ -29,10 +30,19 @@ export const Route = createFileRoute("/sales")({
 
 type StatusFilter = "all" | "paid" | "partial" | "unpaid";
 
+type Grouping = "none" | GroupBy;
+
+const GROUPINGS: { id: Grouping; label: string }[] = [
+  { id: "none", label: "List" },
+  { id: "customer", label: "By customer" },
+  { id: "dealer", label: "By dealer" },
+];
+
 function SalesPage() {
   const { data: sales = [], isPending } = useSales();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [grouping, setGrouping] = useState<Grouping>("none");
   const [editing, setEditing] = useState<Sale | null>(null);
 
   const activeAll = useMemo(() => sales.filter((s: Sale) => !isExpired(s)), [sales]);
@@ -48,7 +58,8 @@ function SalesPage() {
         (s) =>
           !term ||
           s.productName.toLowerCase().includes(term) ||
-          s.customerName.toLowerCase().includes(term),
+          s.customerName.toLowerCase().includes(term) ||
+          s.buyerName.toLowerCase().includes(term),
       )
       .sort((a, b) => daysRemaining(a) - daysRemaining(b));
   }, [activeAll, q, status]);
@@ -82,19 +93,29 @@ function SalesPage() {
         className="mt-[22px]"
         value={q}
         onChange={setQ}
-        placeholder="Search product or customer"
+        placeholder="Search product, customer or dealer"
       />
 
-      <TextTabs className="mt-5" tabs={tabs} value={status} onChange={setStatus} />
+      <SegmentedPill
+        grow
+        className="mt-4"
+        options={GROUPINGS}
+        value={grouping}
+        onChange={setGrouping}
+      />
+
+      <TextTabs className="mt-[18px]" tabs={tabs} value={status} onChange={setStatus} />
 
       {isPending ? (
         <SkeletonRows count={6} />
-      ) : (
+      ) : grouping === "none" ? (
         <SalesList
           sales={active}
           emptyText="No active sales match."
           onRowClick={(s) => setEditing(s)}
         />
+      ) : (
+        <SalesGroups sales={active} groupBy={grouping} onRowClick={(s) => setEditing(s)} />
       )}
 
       <SaleSheet open={!!editing} onOpenChange={(o) => !o && setEditing(null)} sale={editing} />

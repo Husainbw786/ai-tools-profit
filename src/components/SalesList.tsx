@@ -46,10 +46,13 @@ export function SaleRow({
   sale: s,
   onClick,
   partyOf = "customer",
+  rule = "bottom",
 }: {
   sale: Sale;
   onClick?: (s: Sale) => void;
   partyOf?: "customer" | "dealer";
+  /** Which side carries the hairline. Grouped cards rule on top instead. */
+  rule?: "top" | "bottom";
 }) {
   const expired = isExpired(s);
   const refunded = isRefunded(s);
@@ -70,7 +73,8 @@ export function SaleRow({
     <li
       onClick={() => onClick?.(s)}
       className={cn(
-        "flex items-center gap-[14px] border-b border-hairline py-4",
+        "flex items-center gap-[14px] border-hairline py-4",
+        rule === "top" ? "border-t" : "border-b",
         onClick && "cursor-pointer",
         (expired || refunded) && "opacity-60",
       )}
