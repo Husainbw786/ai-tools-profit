@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { format, parseISO } from "date-fns";
 import { Plus } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { PeriodPopover } from "@/components/PeriodPopover";
 import { SaleSheet } from "@/components/SaleSheet";
 import { SalesList } from "@/components/SalesList";
 import { SalesGroups, type GroupBy } from "@/components/SalesGroups";
@@ -38,14 +40,32 @@ const GROUPINGS: { id: Grouping; label: string }[] = [
   { id: "dealer", label: "By dealer" },
 ];
 
+const monthKey = (s: Sale) => format(parseISO(s.warrantyStart), "yyyy-MM");
+
 function SalesPage() {
   const { data: sales = [], isPending } = useSales();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [grouping, setGrouping] = useState<Grouping>("none");
+  const [month, setMonth] = useState<string>("all");
   const [editing, setEditing] = useState<Sale | null>(null);
 
-  const activeAll = useMemo(() => sales.filter((s: Sale) => !isExpired(s)), [sales]);
+  const activeEvery = useMemo(() => sales.filter((s: Sale) => !isExpired(s)), [sales]);
+  // Months (by start date) that still have an active sale, newest first.
+  const months = useMemo(() => {
+    const keys = [...new Set(activeEvery.map(monthKey))].sort().reverse();
+    return [
+      { id: "all", label: "All months" },
+      ...keys.map((k) => ({ id: k, label: format(parseISO(`${k}-01`), "MMM yyyy") })),
+    ];
+  }, [activeEvery]);
+  // A picked month can vanish once its last sale expires; fall back to all.
+  const monthValue = months.some((m) => m.id === month) ? month : "all";
+  const activeAll = useMemo(
+    () =>
+      monthValue === "all" ? activeEvery : activeEvery.filter((s) => monthKey(s) === monthValue),
+    [activeEvery, monthValue],
+  );
   const owed = useMemo(
     () => activeAll.reduce((a, s) => a + (isRefunded(s) ? 0 : balanceDue(s)), 0),
     [activeAll],
@@ -104,7 +124,15 @@ function SalesPage() {
         onChange={setGrouping}
       />
 
-      <TextTabs className="mt-[18px]" tabs={tabs} value={status} onChange={setStatus} />
+      <div className="mt-[18px] flex items-start justify-between gap-3">
+        <TextTabs tabs={tabs} value={status} onChange={setStatus} />
+        <PeriodPopover
+          options={months}
+          value={monthValue}
+          onChange={setMonth}
+          className="-mt-1.5 shrink-0 px-3 py-1.5 text-[12px] font-bold"
+        />
+      </div>
 
       {isPending ? (
         <SkeletonRows count={6} />
