@@ -75,8 +75,12 @@ function SalesPage() {
             s.customerName.toLowerCase().includes(term) ||
             s.buyerName.toLowerCase().includes(term),
         )
-        // Most recently added first.
-        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        // Latest sale date first; same-day sales by when they were entered.
+        .sort(
+          (a, b) =>
+            Date.parse(b.warrantyStart) - Date.parse(a.warrantyStart) ||
+            Date.parse(b.createdAt) - Date.parse(a.createdAt),
+        )
     );
   }, [activeAll, q, status]);
 
