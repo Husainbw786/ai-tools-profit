@@ -31,7 +31,11 @@ export function PeriodPopover<T extends string>({
           <ChevronDown className="size-3.5" strokeWidth={2} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-auto min-w-[160px]">
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="max-h-[320px] w-auto min-w-[160px] overflow-y-auto"
+      >
         {options.map((o) => (
           <button
             key={o.id}
