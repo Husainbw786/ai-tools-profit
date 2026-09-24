@@ -11,14 +11,7 @@ import { PageTitle, Pill, SegmentedPill, TextTabs, UnderlineSearch } from "@/com
 import { SkeletonRows } from "@/components/skeletons";
 import { useSales } from "@/hooks/use-sales";
 import { openNewSale } from "@/lib/new-sale-bus";
-import {
-  balanceDue,
-  daysRemaining,
-  formatMoney,
-  isExpired,
-  isRefunded,
-  type Sale,
-} from "@/lib/sale-utils";
+import { balanceDue, formatMoney, isExpired, isRefunded, type Sale } from "@/lib/sale-utils";
 
 export const Route = createFileRoute("/sales")({
   head: () => ({
@@ -72,16 +65,19 @@ function SalesPage() {
   );
   const active = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return activeAll
-      .filter((s) => status === "all" || s.paymentStatus === status)
-      .filter(
-        (s) =>
-          !term ||
-          s.productName.toLowerCase().includes(term) ||
-          s.customerName.toLowerCase().includes(term) ||
-          s.buyerName.toLowerCase().includes(term),
-      )
-      .sort((a, b) => daysRemaining(a) - daysRemaining(b));
+    return (
+      activeAll
+        .filter((s) => status === "all" || s.paymentStatus === status)
+        .filter(
+          (s) =>
+            !term ||
+            s.productName.toLowerCase().includes(term) ||
+            s.customerName.toLowerCase().includes(term) ||
+            s.buyerName.toLowerCase().includes(term),
+        )
+        // Most recently added first.
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    );
   }, [activeAll, q, status]);
 
   const tabs: { id: StatusFilter; label: React.ReactNode }[] = [
