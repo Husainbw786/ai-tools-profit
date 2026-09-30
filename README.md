@@ -69,18 +69,21 @@ the install prompt hook used on the More page, and cache clearing on sign-out). 
 only registered in production builds so `npm run dev` is never served from a cache. Bump
 `CACHE_VERSION` in `sw.js` when you change its caching rules.
 
+### Where the data comes from
+
+The ledger **reads** (sales list, contacts, payments for a sale) go straight from the browser to
+Supabase (`src/lib/ledger-reads.ts`). Row Level Security on `sales`, `sale_payments` and
+`contacts` scopes every row to the signed-in user, so no serverless hop or cold start sits in
+front of the screens. **Writes** stay as server functions (`src/lib/*.functions.ts`): they
+validate input and fan out to the Google Sheet mirror and the backup database. Both sides share
+the row-to-DTO mappers in `src/lib/ledger-dto.ts`.
+
 ### Put the server next to the database
 
-Server functions run as Vercel serverless functions in Vercel's default region (US East)
-unless told otherwise. Check your Supabase region under **Project Settings → General →
-Region** and add the matching Vercel region to `vercel.json`, for example Mumbai:
-
-```json
-{ "regions": ["bom1"] }
-```
-
-(Singapore is `sin1`, US East is `iad1`.) This removes an ocean round trip from every
-request.
+Server functions run as Vercel serverless functions in the region set in `vercel.json`
+(`"regions": ["bom1"]`, Mumbai). Check your Supabase region under **Project Settings → General →
+Region** and change it if they differ (Singapore is `sin1`, US East is `iad1`). This removes an
+ocean round trip from every write.
 
 ## Build with Lovable
 

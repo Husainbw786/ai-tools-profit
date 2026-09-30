@@ -1,33 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { contactToDTO as toDTO, type ContactDTO } from "@/lib/ledger-dto";
 
-export type ContactDTO = {
-  id: string;
-  kind: "customer" | "dealer";
-  nameKey: string;
-  displayName: string;
-  tags: string[];
-  notes: string | null;
-};
-
-const toDTO = (r: any): ContactDTO => ({
-  id: r.id,
-  kind: r.kind,
-  nameKey: r.name_key,
-  displayName: r.display_name,
-  tags: r.tags ?? [],
-  notes: r.notes ?? null,
-});
-
-export const listContacts = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase } = context;
-    const { data, error } = await supabase.from("contacts").select("*");
-    if (error) throw new Error(error.message);
-    return (data ?? []).map(toDTO);
-  });
+// Reads (the contacts list) run in the browser: see src/lib/ledger-reads.ts.
+export type { ContactDTO };
 
 const UpsertInput = z.object({
   kind: z.enum(["customer", "dealer"]),

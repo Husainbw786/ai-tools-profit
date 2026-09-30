@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
-import { listContacts, upsertContact, type ContactDTO } from "@/lib/contacts.functions";
+import { upsertContact, type ContactDTO } from "@/lib/contacts.functions";
+import { fetchContacts } from "@/lib/ledger-reads";
 import { mirrorContact } from "@/lib/mirror.functions";
 import { requestSignal } from "@/lib/request-error";
 
@@ -10,11 +11,11 @@ export type Contact = ContactDTO;
 export const CONTACTS_KEY = ["contacts"] as const;
 
 export function useContacts() {
-  const list = useServerFn(listContacts);
   const { session, loading } = useAuth();
   return useQuery({
     queryKey: CONTACTS_KEY,
-    queryFn: () => list({ signal: requestSignal() }),
+    // Read straight from Supabase (RLS-scoped); no serverless hop.
+    queryFn: () => fetchContacts(requestSignal()),
     enabled: !loading && !!session,
   });
 }
