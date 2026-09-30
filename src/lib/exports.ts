@@ -1,4 +1,16 @@
+import { createClientOnlyFn } from "@tanstack/react-start";
 import type { MonthRow } from "@/lib/insights-utils";
+
+// The PDF stack (jspdf, jspdf-autotable and their canvas/svg dependencies) is
+// ~1 MB and only ever runs in the browser. `createClientOnlyFn` strips this
+// loader from the server build so it no longer bloats the serverless function.
+const loadPdfLibs = createClientOnlyFn(async () => {
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  return { jsPDF, autoTable };
+});
 
 const toCSVCell = (v: string | number) => {
   const s = String(v ?? "");
@@ -32,8 +44,9 @@ export function downloadFile(filename: string, content: BlobPart, mime: string) 
 }
 
 export async function monthlyPnLToPDF(rows: MonthRow[], filename: string) {
-  const { jsPDF } = await import("jspdf");
-  const autoTable = (await import("jspdf-autotable")).default;
+  const libs = await loadPdfLibs();
+  if (!libs) throw new Error("PDF export is only available in the browser");
+  const { jsPDF, autoTable } = libs;
   const doc = new jsPDF();
   const title = "Monthly Profit & Loss";
   doc.setFontSize(16);

@@ -22,7 +22,9 @@ display numerals, hairline rules instead of cards). Everything visual is driven 
 variables in `src/styles.css`; dark mode is the `.dark` class on `<html>`, persisted under the
 `profitai-theme` localStorage key by `src/hooks/use-theme.ts`. Shared layout idioms (text tabs,
 chips, segmented pills, stat rules, underline search) live in `src/components/primitives.tsx`.
-The dashboard is the one screen that uses filled surfaces: the net-profit card (`--surface-hero`,
+Both typefaces are self-hosted variable fonts (`@fontsource-variable/*`, imported in
+`src/styles.css` and preloaded from `src/routes/__root.tsx`), so the first paint never waits on a
+third-party font origin. The dashboard is the one screen that uses filled surfaces: the net-profit card (`--surface-hero`,
 `--surface-hero-chip`) and the 2×2 tile grid under it. WhatsApp actions use the brand green (`--whatsapp`).
 
 ### Expiring soon, and grouping active sales
@@ -68,6 +70,19 @@ fallback; server functions and Supabase are never cached) and `src/lib/pwa.ts` (
 the install prompt hook used on the More page, and cache clearing on sign-out). The worker is
 only registered in production builds so `npm run dev` is never served from a cache. Bump
 `CACHE_VERSION` in `sw.js` when you change its caching rules.
+
+### Keeping first paint light
+
+Screen code is preloaded the moment a tab is touched (`defaultPreload: "intent"` in
+`src/router.tsx`). The sale sheet (drawer, form, calendar) is loaded on demand through
+`src/components/SaleSheet.tsx`, which warms the chunk once the first screen is idle, so neither
+the dashboard's first paint nor the first tap on **+** waits on it. The PDF export stack is loaded
+browser-only (`createClientOnlyFn` in `src/lib/exports.ts`) so it never enters the serverless
+function bundle.
+
+Real load times from users' devices show up under **Speed Insights** in the Vercel project
+(`@vercel/speed-insights`, mounted in the root route). Deploys happen through Vercel's Git
+integration on every push to `main`; there is no GitHub Actions deploy workflow.
 
 ### Where the data comes from
 
