@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { PageTitle, SegmentedPill } from "@/components/primitives";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
+import { useInstallPrompt } from "@/lib/pwa";
 import { useSales } from "@/hooks/use-sales";
 import { supabase } from "@/integrations/supabase/client";
 import { balanceDue, formatMoney, isExpired, isRefunded } from "@/lib/sale-utils";
@@ -31,6 +32,7 @@ function MorePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
+  const pwa = useInstallPrompt();
 
   const customerCount = useMemo(
     () => new Set(sales.map((s) => s.customerName.trim().toLowerCase()).filter(Boolean)).size,
@@ -91,6 +93,29 @@ function MorePage() {
         </div>
         <SegmentedPill options={THEMES} value={theme} onChange={setTheme} />
       </div>
+
+      {!pwa.installed && (pwa.canPrompt || pwa.needsManualSteps) && (
+        <div className="flex items-center justify-between gap-3 border-b border-hairline py-[18px]">
+          <div className="min-w-0">
+            <div className="text-[15px] font-bold">Install app</div>
+            <div className="mt-0.5 text-[12px] text-muted-foreground">
+              {pwa.canPrompt
+                ? "Add ProfitAI to your home screen"
+                : "In Safari, tap Share, then “Add to Home Screen”"}
+            </div>
+          </div>
+          {pwa.canPrompt && (
+            <Button
+              size="sm"
+              className="h-9 shrink-0 rounded-full px-4 text-[13px] font-bold"
+              onClick={() => void pwa.install()}
+            >
+              <Download className="size-4" strokeWidth={2.4} />
+              Install
+            </Button>
+          )}
+        </div>
+      )}
 
       <ul>
         {links.map((l) => (
