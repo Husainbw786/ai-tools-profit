@@ -10,6 +10,9 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import manropeWoff2 from "@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url";
+import sourceSerifWoff2 from "@fontsource-variable/source-serif-4/files/source-serif-4-latin-opsz-normal.woff2?url";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/components/AuthProvider";
 import { useEffect, useMemo } from "react";
@@ -135,11 +138,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", sizes: "any" },
       { rel: "icon", href: "/icons/icon.svg", type: "image/svg+xml" },
       { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png", sizes: "180x180" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      // Fonts are self-hosted (see styles.css); preload the latin files used above the fold.
       {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap",
+        rel: "preload",
+        as: "font",
+        type: "font/woff2",
+        href: manropeWoff2,
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "preload",
+        as: "font",
+        type: "font/woff2",
+        href: sourceSerifWoff2,
+        crossOrigin: "anonymous",
       },
     ],
   }),
@@ -184,6 +196,7 @@ function RootComponent() {
       <AuthListener persister={persister} />
       <Outlet />
       <Toaster />
+      <SpeedInsights />
     </AuthProvider>
   );
 

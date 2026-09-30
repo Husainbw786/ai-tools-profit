@@ -28,6 +28,9 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // Fetch a screen's code as soon as a tab is touched or hovered, so the
+    // navigation itself never waits on a download.
+    defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
   });
 
