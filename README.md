@@ -35,7 +35,7 @@ amber inside a week) and a WhatsApp button that opens a renewal nudge (`buildRen
 
 **Active sales** can be read as a flat list or folded by customer or by dealer
 (`src/components/SalesGroups.tsx`). Grouped cards show the subscription count, the billed total and
-anything still due; rows inside name the *other* party, since the card header already names one.
+anything still due; rows inside name the _other_ party, since the card header already names one.
 
 ### Messaging a customer or dealer
 
@@ -47,6 +47,27 @@ WhatsApp** (opens `wa.me` with the saved number, or lets you pick the chat if no
 saved) or **Copy**. Right after a new sale is recorded, the toast offers **Confirm with
 dealer**, which sends one message covering every product in that order. Templates live in
 `src/lib/sale-utils.ts` (`buildCustomerConfirmationMessage`, `buildDealerOrderMessage`).
+
+### Install it on your phone (PWA)
+
+The site is a Progressive Web App, so it can be installed from the browser and then opens
+full-screen from the home screen like a native app, with no browser bar. It is the same
+web app rendered in a standalone web view; nothing is shipped to an app store.
+
+- **Android (Chrome, Edge, Samsung Internet)**: open the site, go to **More → Install app**,
+  or use the browser menu → **Add to Home screen / Install app**.
+- **iPhone / iPad (Safari)**: open the site, tap **Share**, then **Add to Home Screen**.
+  Sign in with email and password inside the installed app; the Google button may bounce out
+  to Safari on iOS.
+- **Desktop (Chrome, Edge)**: click the install icon in the address bar.
+
+The pieces: `public/manifest.webmanifest` (name, icons, standalone display, shortcuts),
+`public/icons/` (generated from `icon.svg`), `public/sw.js` (service worker: hashed assets,
+icons and fonts are cached; pages are network-first with `public/offline.html` as the
+fallback; server functions and Supabase are never cached) and `src/lib/pwa.ts` (registration,
+the install prompt hook used on the More page, and cache clearing on sign-out). The worker is
+only registered in production builds so `npm run dev` is never served from a cache. Bump
+`CACHE_VERSION` in `sw.js` when you change its caching rules.
 
 ### Put the server next to the database
 

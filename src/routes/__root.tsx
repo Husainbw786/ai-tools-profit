@@ -21,6 +21,7 @@ import {
   rememberCacheUser,
   shouldDehydrateQuery,
 } from "@/lib/query-persister";
+import { clearPwaPageCache, registerServiceWorker } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -87,6 +88,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "ProfitAI — Resale Ledger" },
       { name: "theme-color", content: "#FAF9F5", media: "(prefers-color-scheme: light)" },
       { name: "theme-color", content: "#262624", media: "(prefers-color-scheme: dark)" },
+      // Installed-app (PWA) behaviour: full-screen web view on the home screen.
+      { name: "application-name", content: "ProfitAI" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "ProfitAI" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       {
         name: "description",
         content:
@@ -124,6 +131,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "icon", href: "/icons/icon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png", sizes: "180x180" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -162,6 +173,11 @@ function RootComponent() {
   // On the client, successful ledger queries are persisted to localStorage so a
   // reopen paints the last known data immediately and refreshes in place.
   const persister = useMemo(() => createQueryPersister(), []);
+
+  // Installable app: register the service worker after hydration.
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   const inner = (
     <AuthProvider>
@@ -203,6 +219,7 @@ function AuthListener({ persister }: { persister: ReturnType<typeof createQueryP
         rememberCacheUser(null);
         qc.clear();
         void persister?.removeClient();
+        clearPwaPageCache();
         router.invalidate();
         return;
       }
@@ -212,6 +229,7 @@ function AuthListener({ persister }: { persister: ReturnType<typeof createQueryP
           // A different account: never show another user's cached ledger.
           qc.clear();
           void persister?.removeClient();
+          clearPwaPageCache();
           rememberCacheUser(uid);
         }
         qc.invalidateQueries();
