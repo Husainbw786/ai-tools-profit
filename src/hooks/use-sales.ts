@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
-import { createSale, deleteSale, listSales, updateSale, type SaleDTO } from "@/lib/sales.functions";
+import { createSale, deleteSale, updateSale, type SaleDTO } from "@/lib/sales.functions";
+import { fetchSales } from "@/lib/ledger-reads";
 import { mirrorSale } from "@/lib/mirror.functions";
 import { requestSignal } from "@/lib/request-error";
 
@@ -10,11 +11,11 @@ export type Sale = SaleDTO;
 export const SALES_KEY = ["sales"] as const;
 
 export function useSales() {
-  const list = useServerFn(listSales);
   const { session, loading } = useAuth();
   return useQuery({
     queryKey: SALES_KEY,
-    queryFn: () => list({ signal: requestSignal() }),
+    // Read straight from Supabase (RLS-scoped); no serverless hop.
+    queryFn: () => fetchSales(requestSignal()),
     enabled: !loading && !!session,
   });
 }

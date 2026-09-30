@@ -1,11 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  createPayment,
-  deletePayment,
-  listPaymentsForSale,
-  type PaymentDTO,
-} from "@/lib/payments.functions";
+import { createPayment, deletePayment, type PaymentDTO } from "@/lib/payments.functions";
+import { fetchPaymentsForSale } from "@/lib/ledger-reads";
 import { mirrorPaymentDelete } from "@/lib/mirror.functions";
 import { SALES_KEY, useMirrorSale } from "@/hooks/use-sales";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,11 +10,11 @@ import { requestSignal } from "@/lib/request-error";
 export type Payment = PaymentDTO;
 
 export function usePaymentsForSale(saleId: string | null | undefined) {
-  const fn = useServerFn(listPaymentsForSale);
   const { session, loading } = useAuth();
   return useQuery({
     queryKey: ["payments", saleId],
-    queryFn: () => fn({ data: { saleId: saleId as string }, signal: requestSignal() }),
+    // Read straight from Supabase (RLS-scoped); no serverless hop.
+    queryFn: () => fetchPaymentsForSale(saleId as string, requestSignal()),
     enabled: !!saleId && !loading && !!session,
     staleTime: 15_000,
   });

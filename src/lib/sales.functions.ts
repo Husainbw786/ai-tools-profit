@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { TablesUpdate } from "@/integrations/supabase/types";
+import { paidBySaleMap, saleToDTO, type SaleDTO } from "@/lib/ledger-dto";
+
+// Reads (the sales list) run in the browser: see src/lib/ledger-reads.ts.
+export type { SaleDTO };
+const toDTO = saleToDTO;
 
 const SaleInput = z.object({
   productName: z.string().min(1).max(200),
@@ -22,67 +27,6 @@ const SaleInput = z.object({
   refundAmount: z.number().min(0).max(100_000_000).nullable().optional(),
   refundReason: z.string().max(500).nullable().optional(),
 });
-
-export type SaleDTO = {
-  id: string;
-  productName: string;
-  durationMonths: number;
-  quantity: number;
-  buyerName: string;
-  customerName: string;
-  buyPrice: number;
-  sellPrice: number;
-  warrantyStart: string;
-  notes: string | null;
-  customerNumber: string | null;
-  dealerNumber: string | null;
-  hasWarranty: boolean;
-  paymentStatus: "paid" | "unpaid" | "partial";
-  amountPaid: number;
-  createdAt: string;
-  refundedAt: string | null;
-  refundAmount: number | null;
-  refundReason: string | null;
-};
-
-const toDTO = (row: any, amountPaid = 0): SaleDTO => ({
-  id: row.id,
-  productName: row.product_name,
-  durationMonths: row.duration_months,
-  quantity: row.quantity ?? 1,
-  buyerName: row.buyer_name ?? "",
-  customerName: row.customer_name ?? "",
-  buyPrice: Number(row.buy_price),
-  sellPrice: Number(row.sell_price),
-  warrantyStart: row.warranty_start,
-  notes: row.notes ?? null,
-  customerNumber: row.customer_number ?? null,
-  dealerNumber: row.dealer_number ?? null,
-  hasWarranty: row.has_warranty ?? true,
-  paymentStatus: (row.payment_status ?? "paid") as "paid" | "unpaid" | "partial",
-  amountPaid,
-  createdAt: row.created_at,
-  refundedAt: row.refunded_at ?? null,
-  refundAmount: row.refund_amount != null ? Number(row.refund_amount) : null,
-  refundReason: row.refund_reason ?? null,
-});
-
-export const listSales = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase } = context;
-    const [{ data, error }, { data: pays, error: payErr }] = await Promise.all([
-      supabase.from("sales").select("*").order("warranty_start", { ascending: false }),
-      supabase.from("sale_payments").select("sale_id, amount"),
-    ]);
-    if (error) throw new Error(error.message);
-    if (payErr) throw new Error(payErr.message);
-    const paidBySale = new Map<string, number>();
-    for (const p of pays ?? []) {
-      paidBySale.set(p.sale_id, (paidBySale.get(p.sale_id) ?? 0) + Number(p.amount));
-    }
-    return (data ?? []).map((r) => toDTO(r, paidBySale.get(r.id) ?? 0));
-  });
 
 export const createSale = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -208,10 +152,7 @@ export const backfillSalesToSheet = createServerFn({ method: "POST" })
     ]);
     if (error) throw new Error(error.message);
     if (payErr) throw new Error(payErr.message);
-    const paidBySale = new Map<string, number>();
-    for (const p of pays ?? []) {
-      paidBySale.set(p.sale_id, (paidBySale.get(p.sale_id) ?? 0) + Number(p.amount));
-    }
+    const paidBySale = paidBySaleMap(pays ?? []);
     const byUser = new Map<string, any[]>();
     for (const r of rows ?? []) {
       const arr = byUser.get(r.user_id) ?? [];

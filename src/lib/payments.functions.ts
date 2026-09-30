@@ -1,39 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { paymentToDTO as toDTO, type PaymentDTO } from "@/lib/ledger-dto";
 
-export type PaymentDTO = {
-  id: string;
-  saleId: string;
-  amount: number;
-  paidAt: string;
-  method: string | null;
-  note: string | null;
-  createdAt: string;
-};
-
-const toDTO = (row: any): PaymentDTO => ({
-  id: row.id,
-  saleId: row.sale_id,
-  amount: Number(row.amount),
-  paidAt: row.paid_at,
-  method: row.method ?? null,
-  note: row.note ?? null,
-  createdAt: row.created_at,
-});
-
-export const listPaymentsForSale = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ saleId: z.string().uuid() }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
-      .from("sale_payments")
-      .select("*")
-      .eq("sale_id", data.saleId)
-      .order("paid_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return (rows ?? []).map(toDTO);
-  });
+// Reads (payments for a sale) run in the browser: see src/lib/ledger-reads.ts.
+export type { PaymentDTO };
 
 export const createPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
