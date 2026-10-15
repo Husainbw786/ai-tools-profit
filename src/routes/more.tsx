@@ -54,10 +54,15 @@ function MorePage() {
   };
 
   const links: Array<{
-    to: "/customers" | "/dealers" | "/collections" | "/archive";
+    to: "/contacts" | "/customers" | "/dealers" | "/collections" | "/archive";
     label: string;
     sub: string;
   }> = [
+    {
+      to: "/contacts",
+      label: "Contacts",
+      sub: count("All dealers and customers, with numbers"),
+    },
     {
       to: "/customers",
       label: "Customers",

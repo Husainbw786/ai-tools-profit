@@ -16,6 +16,7 @@ import { Route as LinksRouteImport } from './routes/links'
 import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as DealersRouteImport } from './routes/dealers'
 import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as ContactsRouteImport } from './routes/contacts'
 import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
@@ -57,6 +58,11 @@ const CustomersRoute = CustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactsRoute = ContactsRouteImport.update({
+  id: '/contacts',
+  path: '/contacts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CollectionsRoute = CollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/collections': typeof CollectionsRoute
+  '/contacts': typeof ContactsRoute
   '/customers': typeof CustomersRoute
   '/dealers': typeof DealersRoute
   '/insights': typeof InsightsRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/collections': typeof CollectionsRoute
+  '/contacts': typeof ContactsRoute
   '/customers': typeof CustomersRoute
   '/dealers': typeof DealersRoute
   '/insights': typeof InsightsRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/archive': typeof ArchiveRoute
   '/collections': typeof CollectionsRoute
+  '/contacts': typeof ContactsRoute
   '/customers': typeof CustomersRoute
   '/dealers': typeof DealersRoute
   '/insights': typeof InsightsRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/archive'
     | '/collections'
+    | '/contacts'
     | '/customers'
     | '/dealers'
     | '/insights'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/archive'
     | '/collections'
+    | '/contacts'
     | '/customers'
     | '/dealers'
     | '/insights'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/archive'
     | '/collections'
+    | '/contacts'
     | '/customers'
     | '/dealers'
     | '/insights'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchiveRoute: typeof ArchiveRoute
   CollectionsRoute: typeof CollectionsRoute
+  ContactsRoute: typeof ContactsRoute
   CustomersRoute: typeof CustomersRoute
   DealersRoute: typeof DealersRoute
   InsightsRoute: typeof InsightsRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contacts': {
+      id: '/contacts'
+      path: '/contacts'
+      fullPath: '/contacts'
+      preLoaderRoute: typeof ContactsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/collections': {
       id: '/collections'
       path: '/collections'
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchiveRoute: ArchiveRoute,
   CollectionsRoute: CollectionsRoute,
+  ContactsRoute: ContactsRoute,
   CustomersRoute: CustomersRoute,
   DealersRoute: DealersRoute,
   InsightsRoute: InsightsRoute,
