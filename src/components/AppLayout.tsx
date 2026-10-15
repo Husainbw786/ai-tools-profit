@@ -25,6 +25,7 @@ const desktopNav = [
   { to: "/sales", label: "Active", match: ["/sales"] },
   { to: "/insights", label: "Insights", match: ["/insights"] },
   { to: "/collections", label: "Dues", match: ["/collections"] },
+  { to: "/contacts", label: "Contacts", match: ["/contacts"] },
   { to: "/customers", label: "Customers", match: ["/customers", "/customer/"] },
   { to: "/dealers", label: "Dealers", match: ["/dealers", "/dealer/"] },
   { to: "/archive", label: "Archive", match: ["/archive"] },
@@ -32,6 +33,7 @@ const desktopNav = [
 
 const MORE_PATHS = [
   "/more",
+  "/contacts",
   "/customers",
   "/dealers",
   "/archive",
