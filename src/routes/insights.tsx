@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { endOfMonth, startOfMonth, subMonths } from "date-fns";
+import { FileDown } from "lucide-react";
+import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
 import { PeriodPopover } from "@/components/PeriodPopover";
 import { EmptyState, PageTitle, QuadStat, SectionTitle, TextTabs } from "@/components/primitives";
@@ -15,7 +16,15 @@ import {
   monthlyPnL,
   type Group,
 } from "@/lib/insights-utils";
-import { downloadFile, monthlyPnLToCSV, monthlyPnLToPDF } from "@/lib/exports";
+import {
+  downloadFile,
+  monthDetailToPDF,
+  monthlyPnLToCSV,
+  monthlyPnLToPDF,
+  salesToCSV,
+} from "@/lib/exports";
+import { toast } from "sonner";
+import type { MonthRow } from "@/lib/insights-utils";
 
 type Period = "lifetime" | "this-month" | "last-3" | "last-12";
 type Breakdown = "product" | "customer" | "buyer";
@@ -83,6 +92,20 @@ function InsightsPage() {
   const exportCSV = () =>
     downloadFile(`pnl-${period}.csv`, monthlyPnLToCSV(pnl), "text/csv;charset=utf-8");
   const exportPDF = () => monthlyPnLToPDF(pnl, `pnl-${period}.pdf`);
+  const exportAllCSV = () =>
+    downloadFile(
+      `sales-all-${format(new Date(), "yyyy-MM-dd")}.csv`,
+      "\uFEFF" + salesToCSV(sales),
+      "text/csv;charset=utf-8",
+    );
+  const exportMonthPDF = (row: MonthRow) => {
+    const monthSales = sales.filter(
+      (s) => format(new Date(s.warrantyStart), "yyyy-MM") === row.monthKey,
+    );
+    monthDetailToPDF(row, monthSales, `statement-${row.monthKey}.pdf`).catch(() =>
+      toast.error("Could not create the PDF"),
+    );
+  };
 
   const topEarners = [...groups].sort((a, b) => b.profit - a.profit).slice(0, 5);
   const lowestMargins = [...groups]
@@ -136,6 +159,9 @@ function InsightsPage() {
             <ExportPill onClick={exportPDF} disabled={!pnl.length}>
               PDF
             </ExportPill>
+            <ExportPill onClick={exportAllCSV} disabled={!sales.length}>
+              All entries CSV
+            </ExportPill>
           </span>
         }
       >
@@ -149,8 +175,19 @@ function InsightsPage() {
             <div key={r.monthKey} className="tabular border-b border-hairline py-3.5">
               <div className="flex items-baseline justify-between">
                 <span className="text-[14px] font-bold">{r.monthLabel}</span>
-                <span className="rounded-full bg-secondary px-2 py-[3px] text-[11px] font-bold text-muted-foreground">
-                  {r.count} sale{r.count === 1 ? "" : "s"}
+                <span className="flex items-center gap-1.5">
+                  <span className="rounded-full bg-secondary px-2 py-[3px] text-[11px] font-bold text-muted-foreground">
+                    {r.count} sale{r.count === 1 ? "" : "s"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => exportMonthPDF(r)}
+                    aria-label={`Download ${r.monthLabel} statement PDF`}
+                    className="flex items-center gap-1 rounded-full border border-border px-2 py-[2px] text-[11px] font-bold transition hover:bg-secondary/60"
+                  >
+                    <FileDown className="size-3" strokeWidth={2.4} />
+                    PDF
+                  </button>
                 </span>
               </div>
               <div className="mt-2 grid grid-cols-4 text-[12px]">
