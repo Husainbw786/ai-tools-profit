@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { ChevronRight, Download } from "lucide-react";
+import { format } from "date-fns";
+import { ChevronRight, Download, FileDown } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { PageTitle, SegmentedPill } from "@/components/primitives";
@@ -9,6 +10,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useInstallPrompt } from "@/lib/pwa";
 import { useSales } from "@/hooks/use-sales";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadFile, salesToCSV } from "@/lib/exports";
 import { balanceDue, formatMoney, isExpired, isRefunded } from "@/lib/sale-utils";
 
 export const Route = createFileRoute("/more")({
@@ -138,6 +140,31 @@ function MorePage() {
           </li>
         ))}
       </ul>
+
+      <div className="flex items-center justify-between gap-3 border-b border-hairline py-[18px]">
+        <div className="min-w-0">
+          <div className="text-[15px] font-bold">Export data</div>
+          <div className="mt-0.5 text-[12px] text-muted-foreground">
+            {count(`Every entry (${sales.length}) as a CSV file`)}
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 shrink-0 rounded-full px-4 text-[13px] font-bold"
+          disabled={isPending || !sales.length}
+          onClick={() =>
+            downloadFile(
+              `sales-all-${format(new Date(), "yyyy-MM-dd")}.csv`,
+              "\uFEFF" + salesToCSV(sales),
+              "text/csv;charset=utf-8",
+            )
+          }
+        >
+          <FileDown className="size-4" strokeWidth={2.4} />
+          CSV
+        </Button>
+      </div>
 
       <Button
         variant="outline"
