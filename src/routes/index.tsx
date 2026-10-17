@@ -1,6 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
+import {
+  endOfDay,
+  endOfMonth,
+  endOfWeek,
+  format,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+  subDays,
+  subMonths,
+} from "date-fns";
 import { ArrowRight, Clock, FileText, MessageCircle, Settings, Target } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
@@ -42,12 +52,15 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Period = "lifetime" | "this-month" | "last-month";
+type Period = "today" | "yesterday" | "this-week" | "lifetime" | "this-month" | "last-month";
 
 const PERIODS: { id: Period; label: string }[] = [
-  { id: "lifetime", label: "Lifetime" },
+  { id: "today", label: "Today" },
+  { id: "yesterday", label: "Yesterday" },
+  { id: "this-week", label: "This week" },
   { id: "this-month", label: "This month" },
   { id: "last-month", label: "Last month" },
+  { id: "lifetime", label: "Lifetime" },
 ];
 
 /** "Good morning" / "afternoon" / "evening" by the viewer's local clock. */
@@ -66,11 +79,22 @@ function firstNameOf(user: { email?: string; user_metadata?: Record<string, unkn
 function Index() {
   const { data: sales = [], isPending } = useSales();
   const { user } = useAuth();
-  const [period, setPeriod] = useState<Period>("lifetime");
+  const [period, setPeriod] = useState<Period>("today");
   const [editing, setEditing] = useState<Sale | null>(null);
 
   const now = new Date();
   const range: DateRange | null = useMemo(() => {
+    if (period === "today") return { from: startOfDay(now), to: endOfDay(now) };
+    if (period === "yesterday") {
+      const y = subDays(now, 1);
+      return { from: startOfDay(y), to: endOfDay(y) };
+    }
+    if (period === "this-week") {
+      return {
+        from: startOfWeek(now, { weekStartsOn: 1 }),
+        to: endOfWeek(now, { weekStartsOn: 1 }),
+      };
+    }
     if (period === "this-month") return { from: startOfMonth(now), to: endOfMonth(now) };
     if (period === "last-month") {
       const lm = subMonths(now, 1);
