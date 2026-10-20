@@ -15,6 +15,7 @@ import { ArrowRight, Clock, FileText, MessageCircle, Settings, Target } from "lu
 import { AppLayout } from "@/components/AppLayout";
 import { SaleSheet } from "@/components/SaleSheet";
 import { ExpiringSoon } from "@/components/ExpiringSoon";
+import { DailySales } from "@/components/DailySales";
 import { ProfitTrendChart } from "@/components/ProfitTrendChart";
 import { PeriodPopover } from "@/components/PeriodPopover";
 import {
@@ -237,6 +238,8 @@ function Index() {
           tone="warn"
         />
       </div>
+
+      <DailySales sales={sales} className="mt-7" onRowClick={(s) => setEditing(s)} />
 
       <ProfitTrendChart sales={sales} className="pt-[26px]" />
 
