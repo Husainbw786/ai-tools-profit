@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { format } from "date-fns";
-import { ChevronRight, Download, FileDown } from "lucide-react";
+import { ChevronRight, Download, FileDown, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { PageTitle, SegmentedPill } from "@/components/primitives";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { useInstallPrompt } from "@/lib/pwa";
+import { isAdminEmail } from "@/lib/admin";
 import { useSales } from "@/hooks/use-sales";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadFile, salesToCSV } from "@/lib/exports";
@@ -140,6 +141,24 @@ function MorePage() {
           </li>
         ))}
       </ul>
+
+      {isAdminEmail(user?.email) && (
+        <Link
+          to="/admin"
+          className="flex items-center justify-between gap-3 border-b border-hairline py-[18px]"
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[15px] font-bold">
+              <ShieldCheck className="size-4 text-accent-text" strokeWidth={2.4} />
+              Admin
+            </div>
+            <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
+              All platform users and their data
+            </div>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-faint" strokeWidth={2.2} />
+        </Link>
+      )}
 
       <div className="flex items-center justify-between gap-3 border-b border-hairline py-[18px]">
         <div className="min-w-0">
